@@ -1,0 +1,1481 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="theme-color" content="#0f6b57">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="الفواتير">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>متابعة الفواتير</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f4f0; --surface:#ffffff; --surface-2:#efede7; --text:#1d1c1a; --muted:#6c6963; --line:#e2dfd7;
+  --accent:#0f6b57; --accent-2:#0b5545; --accent-ink:#ffffff; --accent-soft:#e3f1ec;
+  --danger:#b3261e; --ok:#1d7a3e; --warn:#a86400;
+  --c-notdue:#5f6b7a; --c-m1:#9a7300; --c-m3:#b85f00; --c-m6:#c8461a; --c-y1:#bf2f2a; --c-y2:#a11d33; --c-y2p:#7c1236; --c-nodate:#7a6f62; --c-paid:#1d7a3e;
+  --radius:14px; --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.05);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#131312; --surface:#1d1c1a; --surface-2:#282724; --text:#ecebe6; --muted:#a19e96; --line:#34322e;
+    --accent:#43b596; --accent-2:#5cc7a8; --accent-ink:#0c1a16; --accent-soft:#16302a;
+    --danger:#f0776f; --ok:#5bc77e; --warn:#e3a54a;
+    --c-notdue:#9aa6b6; --c-m1:#e0bb4a; --c-m3:#f0a052; --c-m6:#f4865c; --c-y1:#f37068; --c-y2:#ee6a86; --c-y2p:#e070a0; --c-nodate:#b8ab9b; --c-paid:#5bc77e;
+    --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131312; --surface:#1d1c1a; --surface-2:#282724; --text:#ecebe6; --muted:#a19e96; --line:#34322e;
+  --accent:#43b596; --accent-2:#5cc7a8; --accent-ink:#0c1a16; --accent-soft:#16302a;
+  --danger:#f0776f; --ok:#5bc77e; --warn:#e3a54a;
+  --c-notdue:#9aa6b6; --c-m1:#e0bb4a; --c-m3:#f0a052; --c-m6:#f4865c; --c-y1:#f37068; --c-y2:#ee6a86; --c-y2p:#e070a0; --c-nodate:#b8ab9b; --c-paid:#5bc77e;
+  --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:15px/1.55 "IBM Plex Sans Arabic",system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;-webkit-text-size-adjust:100%}
+.num,.money{font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{margin:0;line-height:1.3}
+.wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+
+/* buttons & fields */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--surface);color:var(--text);padding:9px 14px;border-radius:10px;cursor:pointer;font-weight:500;white-space:nowrap;min-height:40px}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{background:var(--accent-2)}
+.btn.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 40%,var(--line))}
+.btn.ghost{background:transparent}
+.btn.sm{padding:6px 10px;min-height:34px;font-size:14px}
+.btn[disabled]{opacity:.55;cursor:progress}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:13px;color:var(--muted);font-weight:500}
+input[type=text],input[type=email],input[type=password],input[type=search],input[type=date],select,textarea{
+  width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px;min-height:42px;outline:none}
+textarea{min-height:80px;resize:vertical}
+[aria-invalid="true"]{border-color:var(--danger)!important}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* login */
+.center{min-height:100dvh;display:grid;place-items:center;padding:24px 16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.login{width:100%;max-width:380px;padding:28px 24px;display:flex;flex-direction:column;gap:14px}
+.login .mark{width:52px;height:52px;border-radius:14px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:24px;font-weight:700}
+.login p{margin:0;color:var(--muted);font-size:14px}
+.err{color:var(--danger);font-size:14px;min-height:1em}
+.link{background:none;border:0;color:var(--accent);cursor:pointer;padding:0;font-size:14px;text-decoration:underline;text-underline-offset:3px}
+.hint{background:var(--accent-soft);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--text)}
+
+/* header */
+.top{position:sticky;top:0;padding-top:env(safe-area-inset-top,0px);z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:10px;padding-bottom:10px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand .mark{width:38px;height:38px;flex:none;border-radius:11px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:700;font-size:18px}
+.brand h1{font-size:17px}
+.brand p{margin:0;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who{display:flex;align-items:center;gap:8px;min-width:0}
+.who .email{font-size:13px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr}
+.role{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+.demo{background:color-mix(in srgb,var(--warn) 14%,var(--surface));color:var(--text);border-bottom:1px solid var(--line);font-size:13.5px}
+.demo .wrap{padding-top:8px;padding-bottom:8px}
+
+main{padding:16px 0 60px}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (min-width:820px){.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.kpi{padding:14px 14px 12px}
+.kpi .lbl{font-size:13px;color:var(--muted);font-weight:500}
+.kpi .val{font-size:22px;font-weight:700;margin-top:2px;line-height:1.2}
+.kpi .val small{font-size:13px;font-weight:500;color:var(--muted);margin-inline-start:4px}
+.kpi .sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+.kpi.alert .val{color:var(--c-y1)}
+
+/* tabs */
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin:18px 0 12px;border-bottom:1px solid var(--line)}
+.tabs button{flex:none;background:none;border:0;padding:10px 12px;cursor:pointer;color:var(--muted);font-weight:600;border-bottom:2px solid transparent;margin-bottom:-1px}
+.dot-badge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--danger);color:#fff;font-size:12px;font-weight:700;margin-inline-start:4px}
+.note-box.new-banner{flex-direction:row;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}
+.new-banner::before{content:none}
+.log-item.new{background:var(--accent-soft);border-radius:10px}
+.tabs button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--accent)}
+
+/* toolbar */
+.toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.toolbar .q{grid-column:1/-1}
+.toolbar .actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.toolbar .actions .btn{flex:1 1 auto}
+.toolbar #fSort{grid-column:1/-1}
+.toolbar select{min-width:0}
+@media (min-width:820px){
+  .toolbar{grid-template-columns:repeat(3,minmax(0,1fr));}
+  .toolbar .q,.toolbar #fSort{grid-column:auto}
+  .toolbar .actions .btn{flex:0 0 auto}
+}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:12px 0 4px;scrollbar-width:thin}
+.chip{--c:var(--muted);flex:none;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);padding:6px 11px;border-radius:999px;cursor:pointer;font-size:13.5px}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip b{font-weight:600}
+.chip-amt{color:var(--muted);font-size:12px}
+.sig{text-align:center;font-size:13px;color:var(--muted);margin:24px 0 0;padding-top:12px;border-top:1px solid var(--line)}
+.sum-card{padding:14px;margin-bottom:12px}
+.sum-card h3{font-size:15px;margin-bottom:10px}
+.bar.big{height:12px}
+.mbars{display:flex;flex-direction:column;gap:8px}
+.mrow{display:grid;grid-template-columns:56px 1fr auto;gap:10px;align-items:center;font-size:13.5px}
+.mrow .ml{color:var(--muted)}
+.mrow .mt{display:flex;height:10px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+.mrow .mt i{display:block;background:var(--accent);border-radius:99px}
+.mrow .mv{min-width:70px;text-align:end}
+.badge.fol{--c:var(--c-notdue)} .badge.fol-promise{--c:var(--accent)} .badge.fol-noanswer,.badge.fol-refused{--c:var(--warn)} .badge.fol-hopeless{--c:var(--muted)} .badge.hold{--c:var(--danger)}
+.note-box.hold{background:color-mix(in srgb,var(--danger) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--danger) 40%,var(--line));font-weight:600}
+.note-box.hold::before,.note-box.hold div::before{content:none}
+.fuform{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end}
+.fuform .full{grid-column:1/-1}
+.chip[aria-pressed="true"]{border-color:var(--c);background:color-mix(in srgb,var(--c) 14%,var(--surface))}
+.count{font-size:13px;color:var(--muted);margin:8px 2px}
+
+/* invoice list */
+.list{display:flex;flex-direction:column;gap:8px}
+.inv{display:block;width:100%;text-align:start;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;cursor:pointer;box-shadow:var(--shadow)}
+.inv:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.inv-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.inv .name{font-weight:600;font-size:15.5px}
+.inv .meta{font-size:13px;color:var(--muted);margin-top:2px;display:flex;flex-wrap:wrap;gap:4px 12px}
+.inv-nums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.inv-nums small{display:block;font-size:11.5px;color:var(--muted)}
+.inv-nums span{font-size:14px;font-weight:500}
+.inv-nums .rem{font-weight:700}
+@media (min-width:820px){
+  .inv{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.7fr);gap:16px;align-items:center}
+  .inv-nums{margin-top:0;padding-top:0;border-top:0}
+}
+.badge{--c:var(--muted);flex:none;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;color:var(--c);background:color-mix(in srgb,var(--c) 13%,transparent);white-space:nowrap}
+.badges{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.st-unpaid{--c:var(--c-y1)} .st-partial{--c:var(--warn)} .st-paid{--c:var(--ok)}
+.cat-new{--c:var(--c-notdue)} .cat-late{--c:var(--c-m1)} .cat-m3{--c:var(--c-m3)} .cat-m6{--c:var(--c-m6)} .cat-y1{--c:var(--c-y1)} .cat-y2{--c:var(--c-y2)} .cat-y5,.cat-y10,.cat-y15{--c:var(--c-y2p)} .cat-nodate,.cat-noamount{--c:var(--c-nodate)} .cat-refund{--c:var(--accent)} .cat-paid{--c:var(--c-paid)}
+.st-refund{--c:var(--accent)} .st-noamount{--c:var(--c-nodate)}
+.contact{display:flex;gap:6px;flex-wrap:wrap}
+.badge.kind{--c:var(--muted)} .badge.warn{--c:var(--warn)}
+.note-box{border-radius:12px;padding:10px 12px;font-size:14px;display:flex;flex-direction:column;gap:4px}
+.note-box.alert{background:color-mix(in srgb,var(--warn) 13%,var(--surface));border:1px solid color-mix(in srgb,var(--warn) 35%,var(--line))}
+.note-box.info{background:var(--accent-soft)}
+.note-box div::before{content:"• ";opacity:.6}
+.who-row{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.who-row:last-child{border-bottom:0}
+.who-row .k{font-size:12.5px;color:var(--muted)}
+.who-row .v{font-weight:500}
+.who-row .num,.who-row .v{align-self:flex-start}
+a.btn{text-decoration:none}
+.crow{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px;border:1px solid var(--line);border-radius:12px}
+.crow .full{grid-column:1/-1}
+.empty{padding:40px 16px;text-align:center;color:var(--muted)}
+.empty .btn{margin-top:12px}
+.more{display:flex;justify-content:center;margin-top:12px}
+
+/* log */
+.log{display:flex;flex-direction:column}
+.log-item{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;padding:12px 4px;border-bottom:1px solid var(--line)}
+.log-item .ic{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;font-size:15px;background:var(--surface-2);grid-row:span 2}
+.log-item .tx{font-size:14.5px}
+.log-item .by{font-size:12.5px;color:var(--muted)}
+.log-day{font-size:12.5px;font-weight:600;color:var(--muted);padding:14px 4px 4px}
+
+/* dialog */
+dialog{border:0;padding:0;background:var(--surface);color:var(--text);border-radius:18px;width:min(640px,calc(100vw - 24px));max-height:calc(100dvh - 24px);box-shadow:0 20px 60px rgba(0,0,0,.25)}
+dialog::backdrop{background:rgba(10,10,10,.45)}
+@media (max-width:640px){dialog{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;border-radius:0;margin:0}}
+.dlg{display:flex;flex-direction:column;max-height:inherit;height:100%}
+.dlg-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:1}
+.dlg-head h2{font-size:18px}
+.dlg-head .sub{font-size:13px;color:var(--muted);margin-top:2px}
+.dlg-body{padding:16px 18px 28px;overflow:auto;display:flex;flex-direction:column;gap:18px}
+.x{width:38px;height:38px;flex:none;border-radius:10px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:20px;line-height:1}
+.money3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.money3 > div{background:var(--surface-2);border-radius:12px;padding:10px 12px}
+.money3 small{display:block;font-size:12px;color:var(--muted)}
+.money3 b{font-size:17px}
+.bar{display:flex;height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden;margin-top:10px}
+.bar > i{display:block;height:100%;background:var(--ok);border-radius:99px}
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;margin:0}
+.facts div{min-width:0}
+.facts dt{font-size:12px;color:var(--muted)}
+.facts dd{margin:0;font-weight:500;overflow-wrap:anywhere}
+.sec h3{font-size:15px;margin-bottom:8px}
+.payform{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--accent-soft);padding:12px;border-radius:12px}
+.payform .full{grid-column:1/-1}
+.payform .row{display:flex;gap:8px;align-items:end}
+.pays{display:flex;flex-direction:column;gap:6px}
+.pay{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.pay .l{min-width:0}
+.pay .a{font-weight:600}
+.pay .m{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.muted{color:var(--muted);font-size:14px}
+details.admin{border:1px solid var(--line);border-radius:12px;padding:0 12px}
+details.admin summary{cursor:pointer;padding:12px 0;font-weight:600}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-bottom:12px}
+.grid2 .full{grid-column:1/-1}
+.rowbtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between}
+.prev{width:100%;border-collapse:collapse;font-size:13px}
+.prev th,.prev td{border-bottom:1px solid var(--line);padding:6px;text-align:start;white-space:nowrap}
+.prev-wrap{overflow:auto;border:1px solid var(--line);border-radius:10px}
+.stats{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.stats li{display:flex;justify-content:space-between;gap:10px;padding:8px 10px;background:var(--surface-2);border-radius:10px}
+
+/* toast */
+#toast{position:fixed;inset-inline:0;bottom:20px;display:flex;justify-content:center;pointer-events:none;z-index:50}
+#toast div{background:var(--text);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;box-shadow:var(--shadow);max-width:calc(100vw - 32px)}
+#toast div.bad{background:var(--danger);color:#fff}
+.spin{width:28px;height:28px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:r 0.8s linear infinite}
+@keyframes r{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="app"><div class="center"><div class="spin" aria-label="جاري التحميل"></div></div></div>
+<dialog id="dlg"></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script type="module">
+import { firebaseConfig, APP_TITLE, ORG_NAME } from './config.js';
+
+const DEMO = !firebaseConfig?.apiKey || /^PASTE/i.test(firebaseConfig.apiKey);
+const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
+const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+const CUR = 'ر.س';
+document.title = APP_TITLE || 'متابعة الفواتير';
+
+/* =================== helpers =================== */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const round2 = n => Math.round((+n || 0) * 100) / 100;
+const toLatin = s => String(s ?? '')
+  .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+  .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+  .replace(/٫/g, '.').replace(/٬/g, ',');
+const num = v => {
+  if (typeof v === 'number') return isFinite(v) ? v : 0;
+  const s = toLatin(v).replace(/[^\d.\-]/g, '');
+  const n = parseFloat(s); return isFinite(n) ? n : 0;
+};
+const money = n => round2(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const M = n => n === null || n === undefined ? '—' : `<span class="money">${money(n)}</span>`;
+const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
+const pad = n => String(n).padStart(2, '0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const todayISO = () => iso(new Date());
+const parseISO = s => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+const daysBetween = (a, b) => Math.round((Date.UTC(b.getFullYear(), b.getMonth(), b.getDate()) - Date.UTC(a.getFullYear(), a.getMonth(), a.getDate())) / 86400000);
+const fmtDate = s => s ? `<span class="num">${esc(s.split('-').reverse().join('/'))}</span>` : '—';
+const fmtDateTime = d => d ? `<span class="num">${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}</span>` : '';
+const shortUser = e => esc(String(e || '').split('@')[0]);
+const normAr = s => toLatin(s).replace(/[ً-ٰٟـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/ؤ/g, 'و').replace(/ئ/g, 'ي').replace(/[\s_\-:()]+/g, '').trim();
+const toDateLike = t => t?.toDate ? t.toDate() : (t instanceof Date ? t : (typeof t === 'number' ? new Date(t) : null));
+
+/* =================== delay rules =================== */
+// Same rules as the original Excel sheet:
+//   basis date = due date if there is one, otherwise invoice date
+//   days late  = today − basis date (only while something is still unpaid)
+//   category   = calendar months like Excel's EDATE (same boundaries as the original sheet: 1, 3, 6, 12, 24, 60, 120, 180 months),
+//                each named by its start and end
+const CATS = [
+  { k: 'new', label: 'أقل من شهر' },
+  { k: 'late', label: 'من شهر إلى 3 شهور' },
+  { k: 'm3', label: 'من 3 إلى 6 شهور' },
+  { k: 'm6', label: 'من 6 شهور إلى سنة' },
+  { k: 'y1', label: 'من سنة إلى سنتين' },
+  { k: 'y2', label: 'من سنتين إلى 5 سنين' },
+  { k: 'y5', label: 'من 5 إلى 10 سنين' },
+  { k: 'y10', label: 'من 10 إلى 15 سنة' },
+  { k: 'y15', label: 'فوق 15 سنة' },
+  { k: 'noamount', label: 'بدون مبلغ' },
+  { k: 'nodate', label: 'بدون تاريخ' },
+  { k: 'refund', label: 'مبلغ للعميل' },
+  { k: 'paid', label: 'مسددة' },
+];
+const CAT = Object.fromEntries(CATS.map(c => [c.k, c]));
+const STATUS = { unpaid: 'غير مسدد', partial: 'مسدد جزئياً', paid: 'مسدد بالكامل', noamount: 'المبلغ غير معروف', refund: 'مستحق للعميل' };
+const STEPS = [[1, 'new'], [3, 'late'], [6, 'm3'], [12, 'm6'], [24, 'y1'], [60, 'y2'], [120, 'y5'], [180, 'y10']];
+function addMonths(d, n) { // Excel EDATE: same day n months later, clamped to month end
+  const t = new Date(d.getFullYear(), d.getMonth() + n, 1);
+  const last = new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate();
+  t.setDate(Math.min(d.getDate(), last)); return t;
+}
+const FOLLOW = [
+  { k: 'none', label: 'لم يتم التواصل' }, { k: 'contacted', label: 'تم التواصل' }, { k: 'promise', label: 'وعد بالسداد' },
+  { k: 'noanswer', label: 'لا يرد' }, { k: 'refused', label: 'رافض' }, { k: 'hopeless', label: 'ميؤوس منها' }, { k: 'check', label: 'تحتاج مراجعة' },
+];
+const FOL = Object.fromEntries(FOLLOW.map(f => [f.k, f]));
+const SIZES = { big: [5000, Infinity], mid: [1000, 5000], small: [0, 1000] };
+function ageText(from, to = new Date()) {
+  let m = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
+  if (to.getDate() < from.getDate()) m--;
+  if (m < 1) { const d = daysBetween(from, to); return d <= 0 ? '' : `${d} يوم`; }
+  const y = Math.floor(m / 12), mo = m % 12;
+  const ys = !y ? '' : y === 1 ? 'سنة' : y === 2 ? 'سنتين' : y <= 10 ? `${y} سنوات` : `${y} سنة`;
+  const ms = !mo ? '' : mo === 1 ? 'شهر' : mo === 2 ? 'شهرين' : mo <= 10 ? `${mo} شهور` : `${mo} شهر`;
+  return [ys, ms].filter(Boolean).join(' و');
+}
+const shortMoney = n => n >= 10000 ? `${Math.round(n / 1000)} ألف` : n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')} ألف` : `${Math.round(n)}`;
+function basisInfo(inv) {
+  if (inv.dueDate) return { d: parseISO(inv.dueDate), label: 'تاريخ الاستحقاق' };
+  if (inv.invoiceDate) return { d: parseISO(inv.invoiceDate), label: 'تاريخ الفاتورة' };
+  return { d: null, label: '—' };
+}
+/* =================== customer / contact rules =================== */
+// Customer number text: a valid mobile = the customer's phone. "عند X" (or a known contact's name) = number not on the
+// invoice, X may know the customer. "لايوجد" = not on the invoice, check notes. "في الملاحظات" = numbers are in the notes.
+const normPhone = v => {
+  const d = toLatin(v).replace(/\D/g, '');
+  if (/^05\d{8}$/.test(d)) return d;
+  if (/^5\d{8}$/.test(d)) return '0' + d;
+  if (/^9665\d{8}$/.test(d)) return '0' + d.slice(3);
+  if (/^009665\d{8}$/.test(d)) return '0' + d.slice(5);
+  return null;
+};
+const phonesIn = t => [...new Set((toLatin(t).match(/(?<!\d)(?:\+?966|0)?5\d{8}(?!\d)/g) || []).map(normPhone).filter(Boolean))];
+const intlPhone = p => '966' + p.slice(1);
+function findContact(name) {
+  const n = normAr(name); if (!n) return null;
+  const all = (S.contacts || []).map(c => ({ c, keys: [c.name, ...(c.aliases || [])].map(normAr).filter(Boolean) }));
+  const hit = all.find(a => a.keys.includes(n)) || all.find(a => a.keys.some(k => k.length >= 3 && n.length >= 3 && (k.startsWith(n) || n.startsWith(k))));
+  return hit ? hit.c : null;
+}
+const KINDS = [
+  { k: 'prep', re: /تحضير/, label: 'أمر تحضير', info: 'أمر تحضير — لم يتم إصدار فاتورة' },
+  { k: 'refund', re: /ارجاع|إرجاع|مرتجع/, label: 'مرتجع للعميل', info: 'مبلغ مرتجع يُصرف للعميل — هذا المبلغ مو لنا' },
+  { k: 'tires', re: /كفرات/, label: 'كفرات', info: 'كفرات اشتريناها للزبون وبيحاسبنا عليها' },
+  { k: 'dawliya', re: /الدولي/, label: 'من الدولية', info: 'أغراض اشتريناها للزبون من محل الدولية وبيحاسبنا عليها' },
+  { k: 'receipt', re: /سند/, label: 'سند قبض', info: 'تم إصدار سند قبض — ننتظر السداد من الزبون' },
+  { k: 'external', re: /فواتير\s*عند/, label: 'فواتير محل آخر', info: 'فواتير لمحل آخر ما تسددت', alert: true },
+  { k: 'group', re: /مجموعة\s*فواتير|مجموعه\s*فواتير/, label: 'مجموعة فواتير', info: 'مجموعة فواتير — ممكن مسددة', alert: true },
+  { k: 'credit', re: /آجل|اجل/, label: 'آجل', info: 'فاتورة آجلة (مو نقدية)' },
+];
+const KIND = Object.fromEntries(KINDS.map(k => [k.k, k]));
+const askFrom = s => { const m = /^عند\s*(.+)$/.exec(String(s ?? '').trim()); return m ? m[1].trim() : null; };
+function insights(inv, known, remaining, paid) {
+  const cno = String(inv.customerNo ?? '').trim(), name = String(inv.name ?? '').trim();
+  const no = String(inv.invoiceNo ?? ''), notes = String(inv.notes ?? '');
+  const alerts = [], infos = []; let review = false;
+  const cPhone = normPhone(cno);
+  const namePhone = /^[+\d\s-]{9,}$/.test(toLatin(name)) ? normPhone(name) : null;
+  const notePhones = phonesIn(notes);
+  const phones = [...new Set([cPhone, namePhone, ...notePhones].filter(Boolean))];
+  const badPhone = !cPhone && /^[+\d\s-]{6,}$/.test(toLatin(cno));
+  if (badPhone) alerts.push(`رقم الجوال المسجل غير صحيح (${cno})`);
+  let askName = askFrom(cno) || askFrom(name);
+  // Other text instead of a number (e.g. the customer's shop name): if it's a known contact, ask them;
+  // otherwise the number is with the person responsible for the invoice.
+  if (!askName && cno && !cPhone && !badPhone && !/لا\s*يوجد|الملاحظات/.test(cno))
+    askName = findContact(cno) ? cno : (inv.owner && !/المؤسس/.test(inv.owner) ? String(inv.owner).trim() : null);
+  const ask = askName ? (findContact(askName) || { name: askName, phone: '' }) : null;
+  if (!cPhone && /لا\s*يوجد/.test(cno)) alerts.push('رقم العميل غير موجود — راجع الملاحظات');
+  if (/الملاحظات/.test(cno)) { alerts.push(notePhones.length > 1 ? `فيه ${notePhones.length} أرقام للعميل في الملاحظات` : 'رقم العميل مكتوب في الملاحظات'); if (notePhones.length > 1) review = true; }
+  const nameUnknown = !name || !!askFrom(name) || /^غير\s*معروف/.test(name) || !!namePhone || /باقي\s*لزبون/.test(name);
+  const kinds = KINDS.filter(k => k.re.test(no));
+  if (/باقي\s*لزبون/.test(name) && !kinds.includes(KIND.refund)) kinds.push(KIND.refund);
+  kinds.forEach(k => { if (k.alert) { alerts.push(k.info); review = true; } else infos.push(k.info); });
+  const prep = kinds.includes(KIND.prep);
+  if (!known) { alerts.push('المبلغ غير معروف'); if (!prep) review = true; }
+  if (/(ممكن|اعتقد|يمكن)\s*(انها\s*)?مسدد/.test(notes) && (!known || remaining > 0) && !kinds.includes(KIND.group)) { alerts.push('ممكن مسددة'); review = true; }
+  if (/خصم\s*فواتير/.test(notes)) { alerts.push('فيه خصم فواتير'); review = true; }
+  if (/مراجعة\s*الملف|يلزم\s*مراجع|يجب\s*الت[اأ]كد/.test(notes)) review = true;
+  if (review) alerts.push('يلزم مراجعة الملف');
+  if (/ارجاع|إرجاع/.test(notes) && paid > 0) infos.push('جزء من المسدد كان عن طريق إرجاع قطع (مو سداد فعلي)');
+  if (known && remaining < 0) infos.push(`المسدد أكبر من الفاتورة بـ ${money(-remaining)} (مثل رسوم شحن) — ما عليه شي`);
+  return { phones, cPhone, badPhone, ask, nameUnknown, namePhone, kinds, review, refund: kinds.includes(KIND.refund),
+    alerts: [...new Set(alerts)], infos: [...new Set(infos)] };
+}
+const hasAmount = inv => inv.amount !== null && inv.amount !== undefined && inv.amount !== '';
+function derive(inv) {
+  const known = hasAmount(inv);
+  const amount = known ? round2(num(inv.amount)) : null, paid = round2(num(inv.paid));
+  const remaining = known ? round2(amount - paid) : 0;
+  const b = basisInfo(inv);
+  const ins = insights(inv, known, remaining, paid);
+  const displayName = ins.nameUnknown ? (/باقي\s*لزبون/.test(inv.name || '') ? 'باقي لزبون' : 'اسم غير معروف') : String(inv.name).trim();
+  let days = 0, cat, status;
+  if (!known) { cat = 'noamount'; status = 'noamount'; }
+  else if (remaining <= 0) { cat = 'paid'; status = 'paid'; }
+  else if (ins.refund) { cat = 'refund'; status = 'refund'; }
+  else {
+    status = paid > 0 ? 'partial' : 'unpaid';
+    if (!b.d) cat = 'nodate';
+    else {
+      const t = new Date(); t.setHours(0, 0, 0, 0);
+      days = Math.max(0, daysBetween(b.d, t));
+      cat = (STEPS.find(([m]) => t <= addMonths(b.d, m)) || [0, 'y15'])[1];
+    }
+  }
+  const follow = FOL[inv.follow] ? inv.follow : 'none';
+  const promiseDue = follow === 'promise' && !!inv.promiseDate && inv.promiseDate <= todayISO() && remaining > 0;
+  const age = days && b.d ? ageText(b.d) : '';
+  return { ...inv, amount, paid, remaining, days, age, cat, status, basisLabel: b.label, payments: inv.payments || [], ins, displayName, follow, promiseDue };
+}
+
+/* =================== data layer: Firebase =================== */
+async function firebaseApi() {
+  const [appM, authM, fs] = await Promise.all([
+    import(FB + 'firebase-app.js'), import(FB + 'firebase-auth.js'), import(FB + 'firebase-firestore.js')
+  ]);
+  const app = appM.initializeApp(firebaseConfig);
+  const auth = authM.getAuth(app);
+  const db = fs.getFirestore(app);
+  const ref = id => fs.doc(db, 'invoices', id);
+  const stamp = () => ({ updatedAt: fs.serverTimestamp(), updatedBy: auth.currentUser?.email || '' });
+  const err = (code, msg) => Object.assign(new Error(msg || code), { code });
+  return {
+    onAuth: cb => authM.onAuthStateChanged(auth, u => cb(u ? { email: u.email } : null)),
+    signIn: (e, p) => authM.signInWithEmailAndPassword(auth, e.trim(), p),
+    signOut: () => authM.signOut(auth),
+    resetPassword: e => authM.sendPasswordResetEmail(auth, e.trim()),
+    async getRole(email) {
+      const s = await fs.getDoc(fs.doc(db, 'roles', String(email).toLowerCase()));
+      return s.exists() ? (s.data().role || null) : null;
+    },
+    watchInvoices: (cb, onErr) => fs.onSnapshot(fs.collection(db, 'invoices'),
+      s => cb(s.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }))), onErr),
+    watchLog: (cb, onErr) => fs.onSnapshot(fs.query(fs.collection(db, 'log'), fs.orderBy('at', 'desc'), fs.limit(200)),
+      s => cb(s.docs.map(d => { const x = d.data({ serverTimestamps: 'estimate' }); return { id: d.id, ...x, at: toDateLike(x.at) || new Date() }; })), onErr),
+    addPayment: (id, entry) => fs.runTransaction(db, async t => {
+      const s = await t.get(ref(id)); if (!s.exists()) throw err('not-found');
+      const d = s.data(); const rem = round2(num(d.amount) - num(d.paid));
+      if (entry.amount > rem + 0.004) throw err('app/over');
+      t.update(ref(id), { paid: round2(num(d.paid) + entry.amount), payments: [...(d.payments || []), entry], ...stamp() });
+    }),
+    removePayment: (id, pid) => fs.runTransaction(db, async t => {
+      const s = await t.get(ref(id)); if (!s.exists()) throw err('not-found');
+      const d = s.data(); const p = (d.payments || []).find(x => x.id === pid); if (!p) return 0;
+      t.update(ref(id), { payments: d.payments.filter(x => x.id !== pid), paid: round2(num(d.paid) - num(p.amount)), ...stamp() });
+      return p.amount;
+    }),
+    update: (id, fields) => fs.updateDoc(ref(id), { ...fields, ...stamp() }),
+    remove: id => fs.deleteDoc(ref(id)),
+    async createMany(docs) {
+      for (let i = 0; i < docs.length; i += 400) {
+        const b = fs.writeBatch(db);
+        docs.slice(i, i + 400).forEach(({ id, ...rest }) => b.set(ref(id), { ...rest, createdAt: fs.serverTimestamp(), ...stamp() }));
+        await b.commit();
+      }
+    },
+    addLog: e => fs.addDoc(fs.collection(db, 'log'), { ...e, at: fs.serverTimestamp() }),
+    watchContacts: (cb, onErr) => fs.onSnapshot(fs.doc(db, 'settings', 'contacts'), s => cb(s.exists() ? (s.data().list || []) : []), onErr),
+    saveContacts: list => fs.setDoc(fs.doc(db, 'settings', 'contacts'), { list, ...stamp() }),
+    watchBackup: (cb, onErr) => fs.onSnapshot(fs.doc(db, 'settings', 'backup'), s => cb(s.exists() ? s.data() : {}), onErr),
+    saveBackup: d => fs.setDoc(fs.doc(db, 'settings', 'backup'), d, { merge: true }),
+  };
+}
+
+/* =================== data layer: demo (fake data, nothing saved) =================== */
+function demoApi() {
+  let user = null, authCb = () => {};
+  const invSubs = new Set(), logSubs = new Set();
+  const t = new Date(), ago = n => iso(new Date(t.getFullYear(), t.getMonth(), t.getDate() - n));
+  // [name, customerNo, invoiceNo, daysAgo, amount, paid, notes, owner] — fake demo data
+  const rows = [
+    ['ورشة النخبة', '0500000101', '31001', 20, 850, 0, '', 'صالح'],
+    ['عند يحيى', 'عند يحيى', '29001', 400, 2704, 0, 'قطر', 'يحيى'],
+    ['مؤسسة الريادة', 'لايوجد', '29002', 200, 1200, 300, 'يلزم مراجعة الملف', 'المؤسسة'],
+    ['المرباع', 'عند يحيى', '40001-تحضير', 300, null, 0, 'امر تحضير - ورشة المسند', 'يحيى'],
+    ['برونو', 'عند يحيى', 'كفرات', 370, 2200, 0, '', 'يحيى'],
+    ['قاسم ورشة الدولية', 'قاسم ورشة الدولية', '42001', 386, 184, 0, '', 'فهد'],
+    ['باقي لزبون', 'لايوجد', '9001 - رقم ارجاع', 1500, 57.5, 0, 'باقي لزبون ليس لنا - يلزم مراجعة الملف', 'المؤسسة'],
+    ['ابوعمر شركة الضمان', 'في الملاحظات', '149001', 3600, 7825, 7000, 'موجود رقمين - 0500000201 + 0500000202 يلزم مراجعة الملف', 'المؤسسة'],
+    ['نواف تبوك', '0500000301', '22001', 520, 215, 245, 'اعتقد مسددة', 'يحيى'],
+    ['أبو خالد حائل', '0500000401', 'مجموعة فواتير', 2750, null, 0, 'ممكن مسددة لكن يجب التأكد من الملف', 'يحيى'],
+    ['خالد اليماني', '0500000501', '2519', 280, 220, 205, '205 المسددة من ارجاع', 'المؤسسة'],
+    ['ورشة الأمل', 'عند صالح', '12001', 50, 640, 0, '', 'صالح'],
+    ['هارون', '05000000011', '19001', 1188, 379.5, 200, '', 'صالح'],
+    ['صالح المسيفر', 'عند صالح', '108001 - آجل', 3500, 6535, 4000, '', 'صالح'],
+    ['عبدالله الجطيلي', '0500000601', '31002', 10, 300, 0, '', 'يحيى'],
+    ['عند نور الدين', 'عند نور الدين', '9778', 1900, 275, 0, '', 'نور'],
+    ['ورشة القرزعي', '0500000701', '15001', 1420, 219.65, 40, '40 - خصم فواتير صالح', 'صالح'],
+    ['ابوناصر المحيميد', 'ابوغزل', '15650', 187, 3400, 0, '', 'يحيى'],
+  ];
+  let invoices = rows.map(([name, customerNo, invoiceNo, d, amount, paid, notes, owner], i) => ({
+    id: docId(invoiceNo), invoiceNo, name, customerNo, invoiceDate: ago(d), dueDate: '', amount, paid, notes, owner, payments: [],
+    oldFile: d >= 1400, follow: 'none' }));
+  Object.assign(invoices.find(x => x.invoiceNo === '22001'), { hold: 'موضوعها عند أسامة — لا تكلم الزبون' });
+  Object.assign(invoices.find(x => x.invoiceNo === '29002'), { follow: 'promise', promiseDate: ago(1), followAt: Date.now() - 86400000 * 5, followBy: 'accountant@demo' });
+  Object.assign(invoices.find(x => x.invoiceNo === '12001'), { follow: 'noanswer', followAt: Date.now() - 86400000 * 2, followBy: 'accountant@demo' });
+  let log = [];
+  let contacts = [{ name: 'يحيى', phone: '0500000001', aliases: [] }, { name: 'صالح', phone: '0500000002', aliases: [] }, { name: 'نور الدين', phone: '0500000003', aliases: ['نور'] }, { name: 'فهد', phone: '0500000004', aliases: ['ابوغزل'] }];
+  const conSubs = new Set(), bakSubs = new Set();
+  const backup = { lastExportAt: Date.now() - 86400000 * 9, lastExportBy: 'owner@demo' };
+  const clone = () => invoices.map(x => ({ ...x, payments: [...(x.payments || [])] }));
+  const emitInv = () => invSubs.forEach(f => f(clone()));
+  const emitLog = () => logSubs.forEach(f => f([...log]));
+  const find = id => invoices.find(x => x.id === id);
+  const wait = () => new Promise(r => setTimeout(r, 120));
+  return {
+    onAuth(cb) { authCb = cb; setTimeout(() => cb(user), 0); return () => {}; },
+    async signIn(e) {
+      await wait(); user = { email: (e || 'owner@demo').trim().toLowerCase() }; authCb(user);
+      // demo: 8 seconds after the owner signs in, the "accountant" records a payment, to show update notifications
+      if (/owner|admin|osama/.test(user.email)) setTimeout(() => {
+        const x = invoices.find(i => i.invoiceNo === '31001'); if (!user || !x || x.paid) return;
+        const entry = { id: uid(), amount: 300, date: iso(new Date()), note: 'تحويل', by: 'accountant@demo', at: Date.now() };
+        Object.assign(x, { paid: 300, payments: [entry], updatedBy: 'accountant@demo', updatedAt: Date.now() }); emitInv();
+        log.unshift({ id: uid(), type: 'payment', invoiceNo: '31001', text: 'سداد 300.00 ر.س — فاتورة 31001 (ورشة النخبة) · تحويل', amount: 300, by: 'accountant@demo', at: new Date() }); emitLog();
+      }, 8000);
+    },
+    async signOut() { user = null; authCb(null); },
+    async resetPassword() {},
+    async getRole(e) { return /owner|admin|osama/.test(e) ? 'admin' : 'editor'; },
+    watchInvoices(cb) { invSubs.add(cb); setTimeout(emitInv, 0); return () => invSubs.delete(cb); },
+    watchLog(cb) { logSubs.add(cb); setTimeout(emitLog, 0); return () => logSubs.delete(cb); },
+    async addPayment(id, entry) { await wait(); const x = find(id); if (!x) throw { code: 'not-found' };
+      if (entry.amount > round2(num(x.amount) - num(x.paid)) + 0.004) throw { code: 'app/over' };
+      x.paid = round2(num(x.paid) + entry.amount); x.payments = [...(x.payments || []), entry]; x.updatedBy = user.email; x.updatedAt = Date.now(); emitInv(); },
+    async removePayment(id, pid) { await wait(); const x = find(id); const p = (x.payments || []).find(q => q.id === pid); if (!p) return 0;
+      x.payments = x.payments.filter(q => q.id !== pid); x.paid = round2(num(x.paid) - p.amount); x.updatedBy = user.email; x.updatedAt = Date.now(); emitInv(); return p.amount; },
+    async update(id, f) { await wait(); Object.assign(find(id), f, { updatedBy: user.email, updatedAt: Date.now() }); emitInv(); },
+    async remove(id) { await wait(); invoices = invoices.filter(x => x.id !== id); emitInv(); },
+    async createMany(docs) { await wait(); invoices.push(...docs.map(d => ({ ...d, updatedBy: user.email, updatedAt: Date.now() }))); emitInv(); },
+    async addLog(e) { log.unshift({ id: uid(), ...e, at: new Date() }); emitLog(); },
+    watchContacts(cb) { conSubs.add(cb); setTimeout(() => cb([...contacts]), 0); return () => conSubs.delete(cb); },
+    async saveContacts(list) { await wait(); contacts = list; conSubs.forEach(f => f([...contacts])); },
+    watchBackup(cb) { bakSubs.add(cb); setTimeout(() => cb({ ...backup }), 0); return () => bakSubs.delete(cb); },
+    async saveBackup(d) { Object.assign(backup, d); bakSubs.forEach(f => f({ ...backup })); },
+  };
+}
+
+/* =================== state =================== */
+const S = {
+  api: null, user: null, role: null, invoices: [], log: [], loaded: false,
+  view: 'list', f: { q: '', status: 'open', cat: '', owner: '', sort: 'days', follow: '', size: '' }, limit: 150,
+  unsub: [], openId: null, openCust: null, raw: [], contacts: [], backup: {}, cf: { q: '', sort: 'rem', show: 'open' },
+};
+const isAdmin = () => S.role === 'admin';
+const canPay = () => S.role === 'admin' || S.role === 'editor';
+const cur = () => S.invoices.find(x => x.id === S.openId);
+
+/* =================== ui utils =================== */
+let toastTimer;
+function toast(msg, bad = false) {
+  const el = $('#toast'); el.innerHTML = `<div class="${bad ? 'bad' : ''}">${esc(msg)}</div>`;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.innerHTML = '', bad ? 5000 : 2600);
+}
+function errMsg(e) {
+  const c = e?.code || '';
+  if (/invalid-credential|wrong-password|user-not-found|invalid-email|invalid-login/.test(c)) return 'البريد أو كلمة المرور غير صحيحة';
+  if (/too-many-requests/.test(c)) return 'محاولات كثيرة، حاول بعد شوي';
+  if (/api-key/.test(c)) return 'مفتاح Firebase في ملف config.js غير صحيح (apiKey) — راجعه';
+  if (/unauthorized-domain/.test(c)) return 'رابط الموقع مو مضاف في Firebase ← Authentication ← Settings ← Authorized domains';
+  if (/operation-not-allowed/.test(c)) return 'تسجيل الدخول بالبريد مو مفعّل في Firebase ← Authentication ← Email/Password';
+  if (/network/.test(c)) return 'تحقق من اتصال الإنترنت';
+  if (/permission-denied/.test(c)) return 'ما عندك صلاحية لهذا الإجراء';
+  if (c === 'app/over') return 'المبلغ أكبر من المتبقي على الفاتورة';
+  if (c === 'not-found') return 'الفاتورة غير موجودة (ممكن انحذفت)';
+  return 'صار خطأ: ' + (e?.message || c || 'غير معروف');
+}
+async function busy(btn, fn) {
+  if (btn) btn.disabled = true;
+  try { return await fn(); } catch (e) { console.error(e); toast(errMsg(e), true); } finally { if (btn) btn.disabled = false; }
+}
+const logIt = (type, inv, text, amount = null) =>
+  S.api.addLog({ type, invoiceNo: inv?.invoiceNo || '', text, amount, by: S.user.email }).catch(e => console.warn('log failed', e));
+let xlsxP;
+const loadXlsx = () => xlsxP ||= new Promise((res, rej) => {
+  const s = document.createElement('script'); s.src = XLSX_URL; s.onload = () => res(window.XLSX); s.onerror = () => { xlsxP = null; rej(new Error('تعذر تحميل مكتبة Excel')); };
+  document.head.appendChild(s);
+});
+
+/* =================== screens =================== */
+function renderLogin() {
+  $('#app').innerHTML = `
+  <div class="center">
+    <form class="card login" id="loginForm" novalidate>
+      <div class="mark">ف</div>
+      <div><h1 style="font-size:20px">${esc(APP_TITLE)}</h1><p>${esc(ORG_NAME)}</p></div>
+      ${DEMO ? `<div class="hint">وضع تجريبي ببيانات وهمية. اكتب بريد فيه <b>owner</b> للدخول كمالك، أو أي بريد ثاني للدخول كمحاسب. كلمة المرور أي شي.</div>` : ''}
+      <div class="field"><label for="em">البريد الإلكتروني</label><input id="em" type="email" autocomplete="username" dir="ltr" required></div>
+      <div class="field"><label for="pw">كلمة المرور</label><input id="pw" type="password" autocomplete="current-password" dir="ltr" required></div>
+      <div class="err" id="lerr"></div>
+      <button class="btn primary" id="lbtn" type="submit">دخول</button>
+      ${DEMO ? '' : `<button class="link" type="button" id="forgot">نسيت كلمة المرور؟</button>`}
+      <p class="sig">إعداد: أسامة</p>
+    </form>
+  </div>`;
+  $('#loginForm').onsubmit = async e => {
+    e.preventDefault(); $('#lerr').textContent = '';
+    const em = $('#em').value, pw = $('#pw').value;
+    if (!DEMO && (!em || !pw)) { $('#lerr').textContent = 'اكتب البريد وكلمة المرور'; return; }
+    $('#lbtn').disabled = true;
+    try { await S.api.signIn(em, pw); } catch (er) { $('#lerr').textContent = errMsg(er); $('#lbtn').disabled = false; }
+  };
+  $('#forgot')?.addEventListener('click', async () => {
+    const em = $('#em').value.trim(); if (!em) { $('#lerr').textContent = 'اكتب بريدك أولاً'; return; }
+    try { await S.api.resetPassword(em); toast('إذا كان الحساب موجود، بيوصلك رابط تغيير كلمة المرور على البريد'); } catch (er) { $('#lerr').textContent = errMsg(er); }
+  });
+  $('#em').focus();
+}
+function renderLoading() { $('#app').innerHTML = `<div class="center"><div class="spin" aria-label="جاري التحميل"></div></div>`; }
+function renderNoAccess() {
+  $('#app').innerHTML = `<div class="center"><div class="card login">
+    <div class="mark">!</div><h1 style="font-size:19px">الحساب غير مصرح</h1>
+    <p>الحساب <b dir="ltr">${esc(S.user.email)}</b> مسجّل دخول، لكنه غير مضاف لقائمة المستخدمين في الموقع. اطلب من المالك إضافته.</p>
+    <button class="btn" id="out">تسجيل خروج</button></div></div>`;
+  $('#out').onclick = () => S.api.signOut();
+}
+function renderFatal(msg) {
+  $('#app').innerHTML = `<div class="center"><div class="card login"><div class="mark">!</div><p>${esc(msg)}</p></div></div>`;
+}
+
+function renderShell() {
+  const admin = isAdmin();
+  $('#app').innerHTML = `
+  <header class="top"><div class="wrap">
+    <div class="brand"><div class="mark">ف</div><div style="min-width:0"><h1>${esc(APP_TITLE)}</h1><p>${esc(ORG_NAME)}</p></div></div>
+    <div class="who">${admin ? `<button class="btn sm ghost" id="contactsBtn" title="جهات التواصل">☎︎ جهات التواصل</button>` : ''}<span class="role">${admin ? 'مالك' : 'محاسب'}</span><span class="email">${esc(S.user.email)}</span><button class="btn sm ghost" id="out">خروج</button></div>
+  </div></header>
+  ${DEMO ? `<div class="demo"><div class="wrap">وضع تجريبي — بيانات وهمية، ولا يُحفظ شيء. ركّب إعدادات Firebase في <b>config.js</b> لتشغيل الموقع الحقيقي.</div></div>` : ''}
+  <main><div class="wrap">
+    <section class="kpis" id="kpis"></section>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-view="list" aria-selected="true">الفواتير</button>
+      <button role="tab" data-view="cust" aria-selected="false">العملاء</button>
+      <button role="tab" data-view="sum" aria-selected="false">الملخص</button>
+      <button role="tab" data-view="log" aria-selected="false">سجل التحديثات <span class="dot-badge num" id="logBadge" hidden></span></button>
+    </nav>
+    <section id="listView">
+      <div class="toolbar">
+        <input class="q" id="q" type="search" placeholder="بحث: اسم العميل، رقم الفاتورة، رقم العميل، المسؤول" aria-label="بحث">
+        <select id="fStatus" aria-label="حالة السداد">
+          <option value="open">غير مسدد بالكامل</option><option value="unpaid">غير مسدد</option>
+          <option value="partial">مسدد جزئياً</option><option value="review">يحتاج مراجعة</option><option value="noamount">بدون مبلغ</option><option value="refund">مبالغ للعملاء</option><option value="old">من الملف القديم</option><option value="hold">موقوف التواصل</option><option value="paid">مسدد بالكامل</option><option value="all">الكل</option>
+        </select>
+        <select id="fOwner" aria-label="المسؤول"></select>
+        <select id="fFollow" aria-label="حالة المتابعة"><option value="">كل حالات المتابعة</option>${FOLLOW.map(f => `<option value="${f.k}">${f.label}</option>`).join('')}<option value="due">وعود سداد حلّ موعدها</option></select>
+        <select id="fSize" aria-label="حجم المبلغ"><option value="">كل المبالغ</option><option value="big">المتبقي 5,000 فأكثر</option><option value="mid">من 1,000 إلى 5,000</option><option value="small">أقل من 1,000</option></select>
+        <select id="fSort" aria-label="الترتيب">
+          <option value="days">الأكثر تأخيراً</option><option value="remaining">الأعلى متبقياً</option>
+          <option value="due">الأقرب استحقاقاً</option><option value="name">اسم العميل</option>
+        </select>
+        <div class="actions">
+          ${admin ? `<button class="btn" id="imp" type="button">⬆︎ استيراد Excel</button><input id="file" type="file" accept=".xlsx,.xls,.csv" hidden>` : ''}
+          ${canPay() ? `<button class="btn" id="newInv" type="button">＋ فاتورة جديدة</button>` : ''}
+          <button class="btn" id="exp" type="button">⬇︎ تصدير Excel</button>
+        </div>
+      </div>
+      <div class="note-box info new-banner" id="newBanner" hidden></div>
+      <div class="note-box alert new-banner" id="promiseBanner" hidden></div>
+      <div class="note-box alert new-banner" id="backupBanner" hidden></div>
+      <div class="chips" id="chips"></div>
+      <div class="count" id="count"></div>
+      <div class="list" id="list"></div>
+      <div class="more" id="more"></div>
+    </section>
+    <section id="custView" hidden>
+      <div class="toolbar">
+        <input class="q" id="cq" type="search" placeholder="بحث: اسم العميل، الجوال، المسؤول" aria-label="بحث في العملاء">
+        <select id="cSort" aria-label="ترتيب العملاء"><option value="rem">الأعلى متبقياً</option><option value="old">الأقدم تأخيراً</option><option value="n">الأكثر فواتير</option><option value="name">الاسم</option></select>
+        <select id="cShow" aria-label="عرض"><option value="open">عليهم مبالغ</option><option value="multi">عليهم أكثر من فاتورة</option><option value="all">كل العملاء</option></select>
+      </div>
+      <div class="count" id="ccount"></div>
+      <div class="list" id="clist"></div>
+    </section>
+    <section id="sumView" hidden></section>
+    <section id="logView" hidden></section>
+    <p class="sig">إعداد: أسامة</p>
+  </div></main>`;
+  $('#out').onclick = () => S.api.signOut();
+  $('#contactsBtn')?.addEventListener('click', openContacts);
+  $('#q').oninput = e => { S.f.q = e.target.value; S.limit = 150; update(); };
+  $('#fStatus').onchange = e => { S.f.status = e.target.value; S.limit = 150; update(); };
+  $('#fOwner').onchange = e => { S.f.owner = e.target.value; S.limit = 150; update(); };
+  $('#fSort').onchange = e => { S.f.sort = e.target.value; update(); };
+  $('#fFollow').onchange = e => { S.f.follow = e.target.value; S.limit = 150; update(); };
+  $('#fSize').onchange = e => { S.f.size = e.target.value; S.limit = 150; update(); };
+  $('#fFollow').value = S.f.follow; $('#fSize').value = S.f.size;
+  $('#fStatus').value = S.f.status; $('#fSort').value = S.f.sort; $('#q').value = S.f.q;
+  $$('.tabs button').forEach(b => b.onclick = () => {
+    if (b.dataset.view === 'log' && S.view !== 'log') S.prevSeen = getSeen();
+    S.view = b.dataset.view; $$('.tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
+    ['list', 'cust', 'sum', 'log'].forEach(v => $('#' + v + 'View').hidden = S.view !== v); update();
+  });
+  $('#exp').onclick = e => busy(e.currentTarget, exportXlsx);
+  if (admin) {
+    $('#imp').onclick = () => $('#file').click();
+    $('#file').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) busy($('#imp'), () => importFile(f)); };
+  }
+  $('#newInv')?.addEventListener('click', openNewInvoice);
+  $('#list').addEventListener('click', e => { const b = e.target.closest('.inv'); if (b) openDetail(b.dataset.id); });
+  $('#clist').addEventListener('click', e => { const b = e.target.closest('.inv'); if (b) openCustomer(b.dataset.key); });
+  $('#cq').oninput = e => { S.cf.q = e.target.value; update(); };
+  $('#cSort').onchange = e => { S.cf.sort = e.target.value; update(); };
+  $('#cShow').onchange = e => { S.cf.show = e.target.value; update(); };
+  $('#cq').value = S.cf.q; $('#cSort').value = S.cf.sort; $('#cShow').value = S.cf.show;
+  $('#chips').addEventListener('click', e => { const b = e.target.closest('.chip'); if (!b) return; S.f.cat = S.f.cat === b.dataset.cat ? '' : b.dataset.cat; S.limit = 150; update(); });
+  $('#more').addEventListener('click', e => { if (e.target.closest('button')) { S.limit += 150; update(); } });
+}
+
+/* =================== main render =================== */
+function matches(x, skipCat = false) {
+  const f = S.f;
+  if (f.status === 'open' && x.status === 'paid') return false;
+  if (f.status === 'review' && !x.ins.review) return false;
+  if (f.status === 'old' && !x.oldFile) return false;
+  if (f.status === 'hold' && !x.hold) return false;
+  if (!['open', 'all', 'review', 'old', 'hold'].includes(f.status) && x.status !== f.status) return false;
+  if (f.follow === 'due' ? !x.promiseDue : (f.follow && x.follow !== f.follow)) return false;
+  if (f.size) { const [lo, hi] = SIZES[f.size]; if (!(x.remaining >= lo && x.remaining < hi) || x.amount === null) return false; }
+  if (f.owner === '__none' ? !!x.owner : (f.owner && x.owner !== f.owner)) return false;
+  if (!skipCat && f.cat && x.cat !== f.cat) return false;
+  if (f.q) {
+    const q = normAr(f.q);
+    if (!normAr([x.name, x.displayName, x.invoiceNo, x.customerNo, x.owner, x.notes, x.ins.ask?.name, ...x.ins.phones, ...x.ins.kinds.map(k => k.label), FOL[x.follow].label, x.oldFile ? 'الملف القديم' : '', x.hold || ''].join(' ')).includes(q)) return false;
+  }
+  return true;
+}
+const SORTS = {
+  days: (a, b) => b.days - a.days || b.remaining - a.remaining,
+  remaining: (a, b) => b.remaining - a.remaining,
+  due: (a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999'),
+  name: (a, b) => (a.displayName || '').localeCompare(b.displayName || '', 'ar'),
+};
+
+function update() {
+  if (!$('#kpis')) return;
+  renderKpis();
+  renderBackupBanner();
+  if (S.view === 'log') { renderLog(); return; }
+  if (S.view === 'cust') { renderCustomers(); return; }
+  if (S.view === 'sum') { renderSummary(); return; }
+
+  // owners
+  const owners = [...new Set(S.invoices.map(x => x.owner).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ar'));
+  const hasNone = S.invoices.some(x => !x.owner);
+  if (S.f.owner && S.f.owner !== '__none' && !owners.includes(S.f.owner)) S.f.owner = '';
+  $('#fOwner').innerHTML = `<option value="">كل المسؤولين</option>` + owners.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('') + (hasNone ? `<option value="__none">بدون مسؤول</option>` : '');
+  $('#fOwner').value = S.f.owner;
+
+  // chips
+  const base = S.invoices.filter(x => matches(x, true));
+  const byCat = {}; base.forEach(x => { (byCat[x.cat] ||= { n: 0, s: 0 }); byCat[x.cat].n++; byCat[x.cat].s += x.remaining; });
+  $('#chips').innerHTML = CATS.filter(c => byCat[c.k]).map(c => `
+    <button class="chip cat-${c.k}" data-cat="${c.k}" aria-pressed="${S.f.cat === c.k}"><span class="dot"></span>${c.label} <b class="num">${byCat[c.k].n}</b>${byCat[c.k].s > 0 ? `<small class="chip-amt">${shortMoney(byCat[c.k].s)}</small>` : ''}</button>`).join('');
+  // promises that are due
+  const due = S.invoices.filter(x => x.promiseDue);
+  const pb = $('#promiseBanner'); pb.hidden = !due.length || S.f.follow === 'due';
+  if (due.length) pb.innerHTML = `<span>فيه <b class="num">${due.length}</b> ${due.length === 1 ? 'وعد سداد حلّ موعده' : 'وعود سداد حلّ موعدها'} — تابعها اليوم</span><button class="btn sm" id="seeDue">عرضها</button>`;
+  $('#seeDue')?.addEventListener('click', () => { S.f.follow = 'due'; S.f.status = 'all'; $('#fFollow').value = 'due'; $('#fStatus').value = 'all'; update(); });
+
+  // list
+  const rows = base.filter(x => !S.f.cat || x.cat === S.f.cat).sort(SORTS[S.f.sort] || SORTS.days);
+  const sumRem = rows.reduce((s, x) => s + Math.max(0, x.remaining), 0);
+  $('#count').innerHTML = S.loaded ? `عرض <span class="num">${Math.min(rows.length, S.limit)}</span> من <span class="num">${rows.length}</span> فاتورة · المتبقي ${M(sumRem)} ${CUR}` : '';
+  if (!S.loaded) { $('#list').innerHTML = `<div class="empty"><div class="spin" style="margin:auto"></div></div>`; return; }
+  if (!S.invoices.length) {
+    $('#list').innerHTML = `<div class="empty">ما فيه فواتير للحين.${isAdmin() ? `<br><button class="btn primary" id="imp2">⬆︎ استيراد ملف Excel</button>` : '<br>المالك يرفع ملف الفواتير.'}</div>`;
+    $('#imp2')?.addEventListener('click', () => $('#file').click());
+    $('#more').innerHTML = ''; return;
+  }
+  if (!rows.length) { $('#list').innerHTML = `<div class="empty">ما فيه فواتير تطابق البحث أو الفلاتر.</div>`; $('#more').innerHTML = ''; return; }
+  $('#list').innerHTML = rows.slice(0, S.limit).map(card).join('');
+  $('#more').innerHTML = rows.length > S.limit ? `<button class="btn">عرض المزيد</button>` : '';
+}
+
+function card(x) {
+  return `<button class="inv" data-id="${esc(x.id)}">
+    <div>
+      <div class="inv-top">
+        <div style="min-width:0"><div class="name">${esc(x.displayName)}</div>
+          <div class="meta"><span>فاتورة <span class="num">${esc(x.invoiceNo)}</span></span><span>${x.ins.phones[0] ? `جوال <span class="num">${x.ins.phones[0]}</span>` : 'الرقم غير موجود'}</span>${x.ins.ask ? `<span>اسأل: ${esc(x.ins.ask.name)}</span>` : ''}${x.owner ? `<span>المسؤول: ${esc(x.owner)}</span>` : ''}</div>
+        </div>
+        <div class="badges"><span class="badge cat-${x.cat}">${CAT[x.cat].label}</span>${x.ins.kinds.map(k => `<span class="badge kind">${k.label}</span>`).join('')}${x.ins.review ? `<span class="badge warn" title="${esc(x.ins.alerts.join(' • '))}">⚠︎ مراجعة</span>` : ''}${x.hold ? `<span class="badge hold">⛔ لا تتواصل</span>` : ''}${x.follow !== 'none' ? `<span class="badge fol fol-${x.follow}">${FOL[x.follow].label}${x.follow === 'promise' && x.promiseDate ? ' ' + x.promiseDate.split('-').reverse().slice(0, 2).join('/') : ''}</span>` : ''}${x.oldFile ? `<span class="badge kind">الملف القديم</span>` : ''}</div>
+      </div>
+    </div>
+    <div class="inv-nums">
+      <div><small>مبلغ الفاتورة</small><span>${M(x.amount)}</span></div>
+      <div><small>المسدد</small><span>${M(x.paid)}</span></div>
+      <div><small>المتبقي</small><span class="rem">${M(x.amount === null ? null : Math.max(0, x.remaining))}</span></div>
+      <div><small>التأخير</small><span>${x.age || '—'}</span></div>
+    </div>
+  </button>`;
+}
+
+function renderKpis() {
+  const open = S.invoices.filter(x => x.remaining > 0 && x.cat !== 'refund');
+  const refunds = S.invoices.filter(x => x.cat === 'refund'), refundSum = refunds.reduce((s, x) => s + x.remaining, 0);
+  const review = S.invoices.filter(x => x.ins.review && x.status !== 'paid').length;
+  const late = open.filter(x => x.cat !== 'new' && x.cat !== 'nodate');
+  const old = open.filter(x => ['y1', 'y2', 'y5', 'y10', 'y15'].includes(x.cat));
+  const noAmt = S.invoices.filter(x => x.cat === 'noamount').length;
+  const sum = a => a.reduce((s, x) => s + x.remaining, 0);
+  const now = new Date(), mk = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+  let paidMonth = 0, payN = 0;
+  S.invoices.forEach(x => x.payments.forEach(p => { if ((p.date || '').startsWith(mk)) { paidMonth += num(p.amount); payN++; } }));
+  $('#kpis').innerHTML = `
+    <div class="card kpi"><div class="lbl">المتبقي للتحصيل</div><div class="val">${M(sum(open))}<small>${CUR}</small></div><div class="sub"><span class="num">${open.length}</span> فاتورة مفتوحة${refunds.length ? ` · للعملاء ${M(refundSum)}` : ''}</div></div>
+    <div class="card kpi alert"><div class="lbl">متأخر أكثر من شهر</div><div class="val">${M(sum(late))}<small>${CUR}</small></div><div class="sub"><span class="num">${late.length}</span> فاتورة${review ? ` · <span class="num">${review}</span> تحتاج مراجعة` : ''}</div></div>
+    <div class="card kpi"><div class="lbl">فوق سنة</div><div class="val">${M(sum(old))}<small>${CUR}</small></div><div class="sub"><span class="num">${old.length}</span> فاتورة${noAmt ? ` · <span class="num">${noAmt}</span> بدون مبلغ` : ''}</div></div>
+    <div class="card kpi"><div class="lbl">محصّل هذا الشهر (من الموقع)</div><div class="val">${M(paidMonth)}<small>${CUR}</small></div><div class="sub"><span class="num">${payN}</span> دفعة</div></div>`;
+}
+
+/* ---------- new updates since the last visit (per person, on this device) ---------- */
+const seenKey = () => 'invoices-seen:' + (S.user?.email || '');
+function getSeen() { try { return +localStorage.getItem(seenKey()) || 0; } catch { return S.seenFallback || 0; } }
+function setSeen(t) { S.seenFallback = t; try { localStorage.setItem(seenKey(), String(t)); } catch {} }
+const isNewForMe = (l, seen) => l.by !== S.user.email && l.at && l.at.getTime() > seen;
+function renderUnread() {
+  if (!$('#logBadge')) return;
+  const n = S.view === 'log' ? 0 : S.log.filter(l => isNewForMe(l, getSeen())).length;
+  $('#logBadge').hidden = !n; $('#logBadge').textContent = n;
+  const b = $('#newBanner'); b.hidden = !n;
+  if (n) b.innerHTML = `<span>فيه <b class="num">${n}</b> ${n === 1 ? 'تحديث جديد' : 'تحديثات جديدة'} من آخر مرة شفت السجل</span><button class="btn sm" id="seeNew">عرضها</button>`;
+  $('#seeNew')?.addEventListener('click', () => $('.tabs button[data-view="log"]').click());
+  document.title = (n ? `(${n}) ` : '') + (APP_TITLE || 'متابعة الفواتير');
+}
+
+function renderLog() {
+  const seen = S.prevSeen ?? getSeen();
+  const icons = { payment: '💵', undo: '↩︎', note: '📝', edit: '✏️', delete: '🗑', import: '⬆︎', create: '＋', follow: '☎︎', export: '⬇︎' };
+  if (!S.log.length) { $('#logView').innerHTML = `<div class="empty">ما فيه تحديثات للحين. أي دفعة أو تعديل يتسجّل هنا بالاسم والوقت.</div>`; return; }
+  let html = '', lastDay = '';
+  S.log.forEach(l => {
+    const d = l.at, day = d ? `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}` : '';
+    if (day !== lastDay) { html += `<div class="log-day num">${day}</div>`; lastDay = day; }
+    html += `<div class="log-item${isNewForMe(l, seen) ? ' new' : ''}"><div class="ic" aria-hidden="true">${icons[l.type] || '•'}</div>
+      <div class="tx">${esc(l.text)}</div><div class="by">${shortUser(l.by)} · <span class="num">${d ? pad(d.getHours()) + ':' + pad(d.getMinutes()) : ''}</span></div></div>`;
+  });
+  $('#logView').innerHTML = `<div class="log">${html}</div>`;
+  setSeen(Date.now()); renderUnread();
+}
+
+/* =================== detail dialog =================== */
+const dlg = $('#dlg');
+dlg.addEventListener('close', () => { S.openId = null; S.openCust = null; });
+dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+
+function openDetail(id) {
+  const fromCust = S.openCust; S.openId = id; const x = cur(); if (!x) return;
+  const admin = isAdmin();
+  dlg.innerHTML = `<div class="dlg">
+    <div class="dlg-head"><div style="min-width:0"><h2>${esc(x.displayName)}</h2><div class="sub">فاتورة <span class="num">${esc(x.invoiceNo)}</span>${x.displayName !== String(x.name ?? '').trim() && x.name ? ` · مكتوب في الملف: ${esc(x.name)}` : ''}</div></div>
+      <div style="display:flex;gap:6px">${fromCust ? `<button class="btn sm" id="backCust">رجوع للعميل</button>` : ''}<button class="x" aria-label="إغلاق" onclick="this.closest('dialog').close()">×</button></div></div>
+    <div class="dlg-body">
+      <div id="d-live"></div>
+      ${canPay() ? `<form class="payform" id="payForm" novalidate>
+        <div class="field full"><label for="p-amt">${x.cat === 'refund' ? 'تسجيل مبلغ انصرف للعميل' : 'تسجيل دفعة جديدة'}</label>
+          <div class="row"><input id="p-amt" type="text" inputmode="decimal" dir="ltr" placeholder="المبلغ" autocomplete="off"><button type="button" class="btn sm" id="p-full">كامل المتبقي</button></div></div>
+        <div class="field"><label for="p-date">تاريخ السداد</label><input id="p-date" type="date" value="${todayISO()}"></div>
+        <div class="field"><label for="p-note">ملاحظة (اختياري)</label><input id="p-note" type="text" placeholder="تحويل، نقدي، شيك..."></div>
+        <button class="btn primary full" id="p-btn" type="submit">تسجيل الدفعة</button>
+      </form>` : ''}
+      ${canPay() ? `<div class="sec"><h3>حالة المتابعة</h3>
+        <div class="fuform">
+          <div class="field"><label for="fu-status">الحالة</label><select id="fu-status">${FOLLOW.map(f => `<option value="${f.k}" ${x.follow === f.k ? 'selected' : ''}>${f.label}</option>`).join('')}</select></div>
+          <div class="field" id="fu-dwrap" ${x.follow === 'promise' ? '' : 'hidden'}><label for="fu-date">موعد السداد</label><input id="fu-date" type="date" value="${esc(x.promiseDate || '')}"></div>
+          <div class="full"><button class="btn sm" id="fu-save">حفظ الحالة</button></div>
+        </div>
+        <p class="muted" id="fu-info" style="margin:6px 0 0"></p></div>` : ''}
+      <div class="sec"><h3>الدفعات المسجلة</h3><div id="d-pays"></div></div>
+      <div class="sec"><h3>ملاحظات</h3>
+        <textarea id="d-notes" placeholder="ملاحظات زائدة عن الفاتورة، نتيجة التواصل مع العميل...">${esc(x.notes || '')}</textarea>
+        <div style="margin-top:8px"><button class="btn sm" id="d-saveNotes">حفظ الملاحظات</button></div></div>
+      ${admin ? `<details class="admin"><summary>تعديل بيانات الفاتورة (المالك فقط)</summary>${invoiceForm(x)}
+        <div class="rowbtns" style="padding-bottom:12px"><button class="btn primary sm" id="e-save">حفظ التعديل</button><button class="btn danger sm" id="e-del">حذف الفاتورة</button></div></details>` : ''}
+    </div></div>`;
+  renderDetailLive();
+  if (!dlg.open) dlg.showModal();
+  $('#backCust')?.addEventListener('click', () => { S.openId = null; openCustomer(fromCust); });
+
+  $('#fu-status')?.addEventListener('change', e => { $('#fu-dwrap').hidden = e.target.value !== 'promise'; });
+  $('#fu-save')?.addEventListener('click', e => busy(e.currentTarget, async () => {
+    const c = cur(); const follow = $('#fu-status').value; const promiseDate = follow === 'promise' ? $('#fu-date').value : '';
+    if (follow === 'promise' && !promiseDate) { toast('اختر موعد السداد اللي وعد فيه', true); return; }
+    if (follow === c.follow && promiseDate === (c.promiseDate || '')) { toast('ما فيه تغيير'); return; }
+    await S.api.update(c.id, { follow, promiseDate, followAt: Date.now(), followBy: S.user.email });
+    logIt('follow', c, `حالة المتابعة لفاتورة ${c.invoiceNo} (${c.displayName}): ${FOL[follow].label}${promiseDate ? ' — موعد السداد ' + promiseDate.split('-').reverse().join('/') : ''}`);
+    toast('تم حفظ حالة المتابعة');
+  }));
+  $('#p-full')?.addEventListener('click', () => { const c = cur(); if (c) $('#p-amt').value = c.remaining > 0 ? c.remaining : ''; });
+  $('#payForm')?.addEventListener('submit', e => { e.preventDefault(); submitPayment(); });
+  $('#d-saveNotes').onclick = e => busy(e.currentTarget, async () => {
+    const c = cur(); const notes = $('#d-notes').value.trim();
+    if (notes === (c.notes || '')) { toast('ما فيه تغيير'); return; }
+    await S.api.update(c.id, { notes }); logIt('note', c, `تعديل ملاحظات فاتورة ${c.invoiceNo} (${c.name}): ${notes.slice(0, 80)}`); toast('تم حفظ الملاحظات');
+  });
+  if (admin) {
+    $('#e-save').onclick = e => busy(e.currentTarget, async () => {
+      const c = cur(); const f = readInvoiceForm(); if (!f) return;
+      delete f.invoiceNo;
+      f.hold = $('#f-hold').value.trim(); f.oldFile = $('#f-old').checked;
+      if (f.amount < c.paid) { toast('مبلغ الفاتورة أقل من المسدد', true); return; }
+      await S.api.update(c.id, f); logIt('edit', c, `تعديل بيانات فاتورة ${c.invoiceNo} (${f.name})`); toast('تم حفظ التعديل');
+    });
+    $('#e-del').onclick = e => {
+      const c = cur(); if (!confirm(`حذف الفاتورة ${c.invoiceNo} (${c.name}) نهائياً؟`)) return;
+      busy(e.currentTarget, async () => { await S.api.remove(c.id); logIt('delete', c, `حذف فاتورة ${c.invoiceNo} (${c.name}) — المتبقي كان ${money(c.remaining)}`); dlg.close(); toast('تم الحذف'); });
+    };
+  }
+}
+
+function callBtns(phone, msg = '') {
+  const i = intlPhone(phone);
+  return `<div class="contact"><a class="btn sm" href="tel:+${i}">📞 اتصال</a><a class="btn sm" href="https://wa.me/${i}${msg ? '?text=' + encodeURIComponent(msg) : ''}" target="_blank" rel="noopener">واتساب</a></div>`;
+}
+function contactSection(x) {
+  const I = x.ins, rows = [];
+  const cno = String(x.customerNo ?? '').trim();
+  if (x.hold) {
+    rows.push(`<div class="who-row"><span class="k">جوال العميل</span><span class="v">موقوف التواصل مع الزبون</span>${I.phones.length ? `<span class="muted num">${I.phones.join(' / ')}</span>` : ''}</div>`);
+  } else if (I.phones.length) {
+    rows.push(`<div class="who-row"><span class="k">جوال العميل${I.phones.length > 1 ? ` (${I.phones.length} أرقام)` : ''}</span>${I.phones.map(p => `<span class="v num">${p}</span>${callBtns(p)}`).join('')}</div>`);
+  } else {
+    rows.push(`<div class="who-row"><span class="k">جوال العميل</span><span class="v">الرقم غير موجود</span>${cno ? `<span class="muted">مكتوب في الملف: ${esc(cno)}</span>` : ''}</div>`);
+  }
+  const sameAsOwner = I.ask && x.owner && normAr(I.ask.name) === normAr(findContact(x.owner)?.name || x.owner);
+  if (I.ask && !x.hold) {
+    const amt = x.amount !== null ? ` بمبلغ ${money(x.amount)} ريال` : '';
+    const msg = `السلام عليكم، الفاتورة رقم ${x.invoiceNo} بتاريخ ${x.invoiceDate || ''}${amt} مسجلة عندك. تعرف اسم العميل ورقم جواله؟`;
+    rows.push(`<div class="who-row"><span class="k">${sameAsOwner ? 'المسؤول — اسأله عن رقم العميل' : 'اسأل عن رقم العميل'}</span><span class="v">${esc(I.ask.name)}${I.ask.phone ? ` · <span class="num">${I.ask.phone}</span>` : ''}</span>${I.ask.phone ? callBtns(I.ask.phone, msg) : `<span class="muted">${isAdmin() ? 'رقمه مو مضاف — أضفه من «جهات التواصل»' : 'رقمه مو مضاف'}</span>`}</div>`);
+  }
+  if (x.owner && !sameAsOwner) {
+    const c = findContact(x.owner);
+    rows.push(`<div class="who-row"><span class="k">المسؤول</span><span class="v">${esc(x.owner)}${/المؤسس/.test(x.owner) ? ' <span class="muted">(تتحملها المؤسسة)</span>' : ''}${c?.phone ? ` · <span class="num">${c.phone}</span>` : ''}</span>${c?.phone ? callBtns(c.phone) : ''}</div>`);
+  }
+  return `<div class="sec"><h3>التواصل</h3><div>${rows.join('')}</div></div>`;
+}
+function renderFollowInfo(x) {
+  const el = $('#fu-info'); if (!el) return;
+  const at = toDateLike(x.followAt);
+  el.innerHTML = at ? `آخر تحديث للمتابعة: ${fmtDateTime(at)} — ${shortUser(x.followBy)}${x.promiseDue ? ' · <b style="color:var(--danger)">حلّ موعد الوعد</b>' : ''}` : 'ما تم تحديث حالة المتابعة للحين';
+}
+function renderDetailLive() {
+  const x = cur(); if (!x || !$('#d-live')) return;
+  const pct = x.amount > 0 ? Math.min(100, Math.max(0, x.paid / x.amount * 100)) : 0;
+  const upd = toDateLike(x.updatedAt);
+  $('#d-live').innerHTML = `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="badge st-${x.status}">${STATUS[x.status]}</span><span class="badge cat-${x.cat}">${CAT[x.cat].label}</span>${x.ins.kinds.map(k => `<span class="badge kind">${k.label}</span>`).join('')}</div>
+    ${x.hold ? `<div class="note-box hold" style="margin-bottom:10px">⛔ ${esc(x.hold)}</div>` : ''}
+    ${x.oldFile ? `<div class="note-box info" style="margin-bottom:10px"><div>هذي الفاتورة من الملف القديم</div></div>` : ''}
+    ${x.ins.alerts.length ? `<div class="note-box alert" style="margin-bottom:10px">${x.ins.alerts.map(a => `<div>${esc(a)}</div>`).join('')}</div>` : ''}
+    ${x.ins.infos.length ? `<div class="note-box info" style="margin-bottom:10px">${x.ins.infos.map(a => `<div>${esc(a)}</div>`).join('')}</div>` : ''}
+    <div class="money3">
+      <div><small>مبلغ الفاتورة</small><b>${M(x.amount)}</b></div>
+      <div><small>المسدد</small><b>${M(x.paid)}</b></div>
+      <div><small>المتبقي</small><b>${M(x.amount === null ? null : Math.max(0, x.remaining))}</b></div>
+    </div>
+    <div class="bar" aria-hidden="true"><i style="width:${pct}%"></i></div>
+    <dl class="facts" style="margin-top:14px">
+      <div><dt>تاريخ الفاتورة</dt><dd>${fmtDate(x.invoiceDate)}</dd></div>
+      <div><dt>تاريخ الاستحقاق</dt><dd>${fmtDate(x.dueDate)}</dd></div>
+      <div><dt>أساس حساب التأخير</dt><dd>${esc(x.basisLabel)}</dd></div>
+      <div><dt>مدة التأخير</dt><dd>${x.days ? `${x.age}<br><span class="muted"><span class="num">${x.days}</span> يوم</span>` : '—'}</dd></div>
+      <div><dt>آخر تحديث</dt><dd>${upd ? `${fmtDateTime(upd)}<br><span class="muted">${shortUser(x.updatedBy)}</span>` : '—'}</dd></div>
+    </dl>
+    <div style="margin-top:14px">${contactSection(x)}</div>`;
+  renderFollowInfo(x);
+  const pays = x.payments.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.at || 0) - (a.at || 0));
+  const fromSite = pays.reduce((s, p) => s + num(p.amount), 0);
+  const before = round2(x.paid - fromSite);
+  $('#d-pays').innerHTML = (pays.length ? `<div class="pays">${pays.map(p => `
+      <div class="pay"><div class="l"><div class="a">${M(p.amount)} ${CUR}</div>
+        <div class="m">${fmtDate(p.date)} · ${shortUser(p.by)}${p.note ? ' · ' + esc(p.note) : ''}</div></div>
+        ${isAdmin() ? `<button class="btn sm ghost" data-undo="${esc(p.id)}">إلغاء</button>` : ''}</div>`).join('')}</div>` : '')
+    + (before > 0.004 ? `<p class="muted" style="margin:8px 0 0">مسدد قبل الاستيراد (من ملف Excel): ${M(before)} ${CUR}</p>` : '')
+    + (!pays.length && !(before > 0.004) ? `<p class="muted" style="margin:0">ما فيه دفعات.</p>` : '');
+  $$('#d-pays [data-undo]').forEach(b => b.onclick = () => {
+    const c = cur(); const p = c.payments.find(q => q.id === b.dataset.undo);
+    if (!confirm(`إلغاء دفعة ${money(p.amount)} ${CUR} من فاتورة ${c.invoiceNo}؟`)) return;
+    busy(b, async () => { const amt = await S.api.removePayment(c.id, p.id); logIt('undo', c, `إلغاء دفعة ${money(amt || p.amount)} ${CUR} — فاتورة ${c.invoiceNo} (${c.name})`, -(amt || p.amount)); toast('تم إلغاء الدفعة'); });
+  });
+  const pb = $('#payForm'); if (pb) pb.hidden = x.remaining <= 0;
+}
+
+async function submitPayment() {
+  const x = cur(); if (!x) return;
+  const amt = round2(num($('#p-amt').value)), date = $('#p-date').value || todayISO(), note = $('#p-note').value.trim();
+  if (!(amt > 0)) { toast('اكتب مبلغ صحيح', true); $('#p-amt').focus(); return; }
+  if (amt > x.remaining + 0.004) { toast(`المبلغ أكبر من المتبقي (${money(x.remaining)})`, true); return; }
+  if (!confirm(`تسجيل دفعة ${money(amt)} ${CUR} لفاتورة ${x.invoiceNo} (${x.name})؟`)) return;
+  const entry = { id: uid(), amount: amt, date, note, by: S.user.email, at: Date.now() };
+  await busy($('#p-btn'), async () => {
+    await S.api.addPayment(x.id, entry);
+    logIt('payment', x, `سداد ${money(amt)} ${CUR} — فاتورة ${x.invoiceNo} (${x.name})${note ? ' · ' + note : ''}`, amt);
+    toast('تم تسجيل الدفعة'); $('#p-amt').value = ''; $('#p-note').value = ''; $('#p-date').value = todayISO();
+  });
+}
+
+/* ---------- invoice form (new: owner + accountant; edit: owner) ---------- */
+function invoiceForm(x = {}, isNew = false) {
+  const v = k => esc(x[k] ?? '');
+  return `<div class="grid2" id="invForm">
+    ${isNew ? `<div class="field"><label>رقم الفاتورة *</label><input id="f-invoiceNo" type="text" dir="ltr" value="${v('invoiceNo')}"></div>` : ''}
+    <div class="field ${isNew ? '' : 'full'}"><label>اسم العميل *</label><input id="f-name" type="text" value="${v('name')}"></div>
+    <div class="field"><label>رقم العميل (الجوال) *</label><input id="f-customerNo" type="text" value="${v('customerNo')}" placeholder="05xxxxxxxx أو: عند يحيى"></div>
+    <div class="field"><label>مبلغ الفاتورة *</label><input id="f-amount" type="text" inputmode="decimal" dir="ltr" value="${x.amount ?? ''}"></div>
+    <div class="field"><label>تاريخ الفاتورة *</label><input id="f-invoiceDate" type="date" value="${v('invoiceDate')}"></div>
+    <div class="field"><label>تاريخ الاستحقاق</label><input id="f-dueDate" type="date" value="${v('dueDate')}"></div>
+    <div class="field full"><label>المسؤول</label><input id="f-owner" type="text" value="${v('owner')}" list="ownersList"></div>
+    <datalist id="ownersList">${[...new Set(S.invoices.map(i => i.owner).filter(Boolean))].map(o => `<option value="${esc(o)}">`).join('')}</datalist>
+    ${!isNew && isAdmin() ? `<div class="field full"><label>تنبيه «لا تتواصل مع الزبون» (اتركه فاضي إذا ما فيه)</label><input id="f-hold" type="text" value="${v('hold')}" placeholder="مثلاً: موضوعها عند أسامة — لا تكلم الزبون"></div>
+    <label class="full" style="display:flex;gap:8px;align-items:center"><input id="f-old" type="checkbox" ${x.oldFile ? 'checked' : ''}> من الملف القديم</label>` : ''}
+    ${isNew ? `<div class="field full"><label>المبلغ المسدد مسبقاً</label><input id="f-paid" type="text" inputmode="decimal" dir="ltr" value="0"></div>
+    <div class="field full"><label>ملاحظات</label><textarea id="f-notes"></textarea></div>` : ''}
+  </div>`;
+}
+function readInvoiceForm() {
+  const g = id => $('#f-' + id)?.value?.trim() ?? '';
+  const f = { invoiceNo: g('invoiceNo'), name: g('name'), customerNo: g('customerNo'), amount: round2(num(g('amount'))),
+    invoiceDate: g('invoiceDate'), dueDate: g('dueDate'), owner: g('owner') };
+  const bad = (id, msg) => { toast(msg, true); const el = $('#f-' + id); if (el) { el.setAttribute('aria-invalid', 'true'); el.focus(); } return null; };
+  $$('#invForm [aria-invalid]').forEach(el => el.removeAttribute('aria-invalid'));
+  if ($('#f-invoiceNo') && !f.invoiceNo) return bad('invoiceNo', 'اكتب رقم الفاتورة');
+  if (!f.name) return bad('name', 'اكتب اسم العميل');
+  if (!f.customerNo) return bad('customerNo', 'اكتب رقم العميل — وإذا ما عندك رقمه اكتب: عند (اسم الموظف) أو لايوجد');
+  if (/\d{6,}/.test(toLatin(f.customerNo).replace(/[\s-]/g, '')) && !normPhone(f.customerNo)) return bad('customerNo', 'رقم الجوال غير صحيح — لازم يكون 10 أرقام ويبدأ بـ 05');
+  if (normPhone(f.customerNo)) f.customerNo = normPhone(f.customerNo);
+  if (!(f.amount > 0)) return bad('amount', 'اكتب مبلغ الفاتورة');
+  if (!f.invoiceDate) return bad('invoiceDate', 'اختر تاريخ الفاتورة');
+  if (f.dueDate && f.dueDate < f.invoiceDate) return bad('dueDate', 'تاريخ الاستحقاق قبل تاريخ الفاتورة');
+  return f;
+}
+function openNewInvoice() {
+  S.openId = null;
+  dlg.innerHTML = `<div class="dlg"><div class="dlg-head"><h2>فاتورة جديدة</h2><button class="x" aria-label="إغلاق" onclick="this.closest('dialog').close()">×</button></div>
+    <div class="dlg-body">${invoiceForm({}, true)}<div><button class="btn primary" id="n-save">إضافة الفاتورة</button></div></div></div>`;
+  dlg.showModal();
+  $('#n-save').onclick = e => busy(e.currentTarget, async () => {
+    const f = readInvoiceForm(); if (!f) return;
+    const id = docId(f.invoiceNo);
+    if (S.invoices.some(x => x.id === id)) { toast('رقم الفاتورة موجود مسبقاً', true); return; }
+    const paid = round2(num($('#f-paid').value));
+    if (paid > f.amount) { toast('المسدد أكبر من مبلغ الفاتورة', true); return; }
+    await S.api.createMany([{ id, ...f, paid, notes: $('#f-notes').value.trim(), payments: [] }]);
+    logIt('create', f, `إضافة فاتورة ${f.invoiceNo} (${f.name}) بمبلغ ${money(f.amount)} ${CUR}`);
+    dlg.close(); toast('تمت إضافة الفاتورة');
+  });
+}
+
+/* =================== customers (invoices grouped per customer) =================== */
+const isOpenDebt = x => x.amount !== null && x.remaining > 0 && x.cat !== 'refund';
+function custKey(x) {
+  const p = x.ins.cPhone || x.ins.namePhone;
+  if (p) return 'p:' + p;
+  if (!x.ins.nameUnknown) return 'n:' + normAr(x.name);
+  return 'i:' + x.id;
+}
+function customerGroups() {
+  // a name written without a phone joins the customer who has that same name with a phone (if only one does)
+  const byName = new Map();
+  S.invoices.forEach(x => { const p = x.ins.cPhone || x.ins.namePhone; if (p && !x.ins.nameUnknown) { const n = normAr(x.name); byName.set(n, byName.has(n) && byName.get(n) !== 'p:' + p ? null : 'p:' + p); } });
+  const keyOf = x => { const k = custKey(x); return k.startsWith('n:') && byName.get(k.slice(2)) ? byName.get(k.slice(2)) : k; };
+  const m = new Map();
+  S.invoices.forEach(x => { const k = keyOf(x); if (!m.has(k)) m.set(k, []); m.get(k).push(x); });
+  return [...m].map(([key, list]) => {
+    const names = list.filter(x => !x.ins.nameUnknown).map(x => String(x.name).trim());
+    const freq = n => names.filter(m => normAr(m) === normAr(n)).length;
+    const distinct = [...new Map(names.map(n => [normAr(n), n])).values()].sort((a, b) => freq(b) - freq(a) || b.length - a.length);
+    const name = distinct[0] || '', otherNames = distinct.slice(1);
+    const open = list.filter(isOpenDebt);
+    const oldest = open.reduce((o, x) => (!o || x.days > o.days ? x : o), null);
+    const latestFollow = list.filter(x => x.followAt).sort((a, b) => b.followAt - a.followAt)[0];
+    return {
+      key, list, name, otherNames, open,
+      phones: [...new Set(list.flatMap(x => x.ins.phones))],
+      remaining: round2(open.reduce((s, x) => s + x.remaining, 0)),
+      amount: round2(list.reduce((s, x) => s + (x.amount || 0), 0)),
+      paid: round2(list.reduce((s, x) => s + x.paid, 0)),
+      oldest, owners: [...new Set(list.map(x => x.owner).filter(Boolean))],
+      promiseDue: list.some(x => x.promiseDue), hold: list.find(x => x.hold)?.hold || '',
+      follow: latestFollow ? latestFollow.follow : 'none', review: open.some(x => x.ins.review),
+      first: list.map(x => (x.invoiceDate || '9999') + '|' + x.invoiceNo).sort()[0],
+    };
+  }).map((g, _, all) => g);
+}
+// Customers without a name are never merged: each gets its own number (ordered by their oldest invoice)
+function numberUnnamed(gs) {
+  gs.filter(g => !g.name).sort((a, b) => a.first.localeCompare(b.first)).forEach((g, i) => { g.name = `عميل بدون اسم ${i + 1}`; g.unnamed = true; });
+  return gs;
+}
+function renderCustomers() {
+  let gs = numberUnnamed(customerGroups());
+  if (S.cf.show === 'open') gs = gs.filter(g => g.open.length);
+  if (S.cf.show === 'multi') gs = gs.filter(g => g.open.length > 1);
+  if (S.cf.q) { const q = normAr(S.cf.q); gs = gs.filter(g => normAr([g.name, ...g.otherNames, ...g.phones, ...g.owners, ...g.list.map(x => x.invoiceNo + ' ' + x.customerNo)].join(' ')).includes(q)); }
+  const sorts = { rem: (a, b) => b.remaining - a.remaining, old: (a, b) => (b.oldest?.days || 0) - (a.oldest?.days || 0), n: (a, b) => b.open.length - a.open.length || b.remaining - a.remaining, name: (a, b) => a.name.localeCompare(b.name, 'ar') };
+  gs.sort(sorts[S.cf.sort] || sorts.rem);
+  $('#ccount').innerHTML = `<span class="num">${gs.length}</span> عميل · المتبقي ${M(gs.reduce((s, g) => s + g.remaining, 0))} ${CUR}`;
+  if (!gs.length) { $('#clist').innerHTML = `<div class="empty">ما فيه عملاء يطابقون البحث.</div>`; return; }
+  $('#clist').innerHTML = gs.slice(0, 300).map(g => `<button class="inv" data-key="${esc(g.key)}">
+    <div><div class="inv-top"><div style="min-width:0"><div class="name">${esc(g.name)}</div>
+      <div class="meta">${g.otherNames.length ? `<span>أو: ${esc(g.otherNames.join('، '))}</span>` : ''}<span>${g.phones[0] ? `جوال <span class="num">${g.phones[0]}</span>` : 'الرقم غير موجود'}</span>${g.owners.length ? `<span>المسؤول: ${esc(g.owners.join('، '))}</span>` : ''}</div></div>
+      <div class="badges">${g.oldest ? `<span class="badge cat-${g.oldest.cat}">${CAT[g.oldest.cat].label}</span>` : ''}${g.hold ? `<span class="badge hold">⛔ لا تتواصل</span>` : ''}${g.promiseDue ? `<span class="badge fol-promise fol">حلّ موعد الوعد</span>` : g.follow !== 'none' ? `<span class="badge fol fol-${g.follow}">${FOL[g.follow].label}</span>` : ''}${g.review ? `<span class="badge warn">⚠︎ مراجعة</span>` : ''}</div></div></div>
+    <div class="inv-nums">
+      <div><small>فواتير مفتوحة</small><span class="num">${g.open.length}</span></div>
+      <div><small>المسدد</small><span>${M(g.paid)}</span></div>
+      <div><small>المتبقي</small><span class="rem">${M(g.remaining)}</span></div>
+      <div><small>أقدم فاتورة</small><span>${g.oldest?.age || '—'}</span></div>
+    </div></button>`).join('');
+}
+function curCust() { return S.openCust ? numberUnnamed(customerGroups()).find(g => g.key === S.openCust) : null; }
+function openCustomer(key) {
+  S.openCust = key; S.openId = null; const g = curCust(); if (!g) return;
+  dlg.innerHTML = `<div class="dlg">
+    <div class="dlg-head"><div style="min-width:0"><h2>${esc(g.name)}</h2><div class="sub">عميل · <span class="num">${g.list.length}</span> فاتورة${g.unnamed ? ' · الاسم غير معروف' : ''}${g.otherNames.length ? ` · مسجل أيضاً باسم: ${esc(g.otherNames.join('، '))}` : ''}</div></div>
+      <button class="x" aria-label="إغلاق" onclick="this.closest('dialog').close()">×</button></div>
+    <div class="dlg-body">
+      <div id="c-live"></div>
+      ${canPay() ? `<form class="payform" id="cPayForm" novalidate>
+        <div class="field full"><label for="cp-amt">تسجيل دفعة للعميل (تتوزع على فواتيره من الأقدم)</label>
+          <div class="row"><input id="cp-amt" type="text" inputmode="decimal" dir="ltr" placeholder="المبلغ" autocomplete="off"><button type="button" class="btn sm" id="cp-full">كامل المتبقي</button></div></div>
+        <div class="field"><label for="cp-date">تاريخ السداد</label><input id="cp-date" type="date" value="${todayISO()}"></div>
+        <div class="field"><label for="cp-note">ملاحظة (اختياري)</label><input id="cp-note" type="text" placeholder="تحويل، نقدي، شيك..."></div>
+        <button class="btn primary full" id="cp-btn" type="submit">تسجيل الدفعة</button>
+      </form>
+      <div class="sec"><h3>حالة المتابعة لكل فواتيره المفتوحة</h3>
+        <div class="fuform">
+          <div class="field"><label for="cfu-status">الحالة</label><select id="cfu-status">${FOLLOW.map(f => `<option value="${f.k}" ${g.follow === f.k ? 'selected' : ''}>${f.label}</option>`).join('')}</select></div>
+          <div class="field" id="cfu-dwrap" ${g.follow === 'promise' ? '' : 'hidden'}><label for="cfu-date">موعد السداد</label><input id="cfu-date" type="date"></div>
+          <div class="full"><button class="btn sm" id="cfu-save">حفظ للكل</button></div>
+        </div></div>` : ''}
+      <div class="sec"><h3>فواتيره</h3><div id="c-invs" class="pays"></div></div>
+    </div></div>`;
+  renderCustomerLive();
+  if (!dlg.open) dlg.showModal();
+  $('#c-invs').addEventListener('click', e => { const r = e.target.closest('[data-inv]'); if (r) openDetail(r.dataset.inv); });
+  $('#cp-full')?.addEventListener('click', () => { const c = curCust(); if (c) $('#cp-amt').value = payable(c).reduce((s, x) => s + x.remaining, 0) || ''; });
+  $('#cPayForm')?.addEventListener('submit', e => { e.preventDefault(); submitCustomerPayment(); });
+  $('#cfu-status')?.addEventListener('change', e => { $('#cfu-dwrap').hidden = e.target.value !== 'promise'; });
+  $('#cfu-save')?.addEventListener('click', e => busy(e.currentTarget, async () => {
+    const c = curCust(); const follow = $('#cfu-status').value, promiseDate = follow === 'promise' ? $('#cfu-date').value : '';
+    if (follow === 'promise' && !promiseDate) { toast('اختر موعد السداد اللي وعد فيه', true); return; }
+    if (!c.open.length) { toast('ما عليه فواتير مفتوحة'); return; }
+    for (const x of c.open) await S.api.update(x.id, { follow, promiseDate, followAt: Date.now(), followBy: S.user.email });
+    logIt('follow', null, `حالة المتابعة للعميل ${c.name} (${c.open.length} فاتورة): ${FOL[follow].label}${promiseDate ? ' — موعد السداد ' + promiseDate.split('-').reverse().join('/') : ''}`);
+    toast('تم حفظ حالة المتابعة');
+  }));
+}
+const payable = g => g.open.filter(x => !x.hold).sort((a, b) => (a.invoiceDate || '').localeCompare(b.invoiceDate || ''));
+function renderCustomerLive() {
+  const g = curCust(); if (!g || !$('#c-live')) { if (dlg.open && S.openCust) dlg.close(); return; }
+  const first = g.open[0] || g.list[0];
+  $('#c-live').innerHTML = `
+    ${g.hold ? `<div class="note-box hold" style="margin-bottom:10px">⛔ ${esc(g.hold)}</div>` : ''}
+    <div class="money3">
+      <div><small>إجمالي فواتيره</small><b>${M(g.amount)}</b></div>
+      <div><small>المسدد</small><b>${M(g.paid)}</b></div>
+      <div><small>المتبقي</small><b>${M(g.remaining)}</b></div>
+    </div>
+    <div style="margin-top:14px">${contactSection({ ...first, ins: { ...first.ins, phones: g.phones } , hold: g.hold })}</div>`;
+  $('#c-invs').innerHTML = g.list.slice().sort((a, b) => (a.invoiceDate || '').localeCompare(b.invoiceDate || '')).map(x => `
+    <button class="pay" data-inv="${esc(x.id)}" style="text-align:start;cursor:pointer;background:var(--surface);width:100%">
+      <div class="l"><div class="a">فاتورة <span class="num">${esc(x.invoiceNo)}</span> · ${fmtDate(x.invoiceDate)}</div>
+        <div class="m">${x.amount === null ? 'بدون مبلغ' : `المتبقي ${M(Math.max(0, x.remaining))} من ${M(x.amount)}`}${x.age ? ' · ' + x.age : ''}${x.hold ? ' · ⛔ لا تتواصل' : ''}</div></div>
+      <span class="badge cat-${x.cat}">${CAT[x.cat].label}</span></button>`).join('');
+  const pf = $('#cPayForm'); if (pf) pf.hidden = !payable(g).length;
+}
+async function submitCustomerPayment() {
+  const g = curCust(); if (!g) return;
+  const targets = payable(g), max = round2(targets.reduce((s, x) => s + x.remaining, 0));
+  const amt = round2(num($('#cp-amt').value)), date = $('#cp-date').value || todayISO(), note = $('#cp-note').value.trim();
+  if (!(amt > 0)) { toast('اكتب مبلغ صحيح', true); return; }
+  if (amt > max + 0.004) { toast(`المبلغ أكبر من المتبقي على العميل (${money(max)})`, true); return; }
+  const plan = []; let left = amt;
+  for (const x of targets) { if (left <= 0.004) break; const a = round2(Math.min(left, x.remaining)); plan.push([x, a]); left = round2(left - a); }
+  if (!confirm(`تسجيل ${money(amt)} ${CUR} للعميل ${g.name}؟\n` + plan.map(([x, a]) => `فاتورة ${x.invoiceNo}: ${money(a)}`).join('\n'))) return;
+  await busy($('#cp-btn'), async () => {
+    const done = [];
+    for (const [x, a] of plan) {
+      await S.api.addPayment(x.id, { id: uid(), amount: a, date, note: note ? `${note} (دفعة مجمّعة)` : 'دفعة مجمّعة', by: S.user.email, at: Date.now() });
+      done.push(`${x.invoiceNo}: ${money(a)}`);
+    }
+    logIt('payment', null, `سداد ${money(amt)} ${CUR} من ${g.name} — توزعت على ${done.length} ${done.length === 1 ? 'فاتورة' : 'فواتير'} (${done.join('، ')})${note ? ' · ' + note : ''}`, amt);
+    toast(`تم تسجيل الدفعة على ${done.length} ${done.length === 1 ? 'فاتورة' : 'فواتير'}`); $('#cp-amt').value = ''; $('#cp-note').value = '';
+  });
+}
+
+/* =================== summary (what has been achieved) =================== */
+const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+function renderSummary() {
+  const pays = S.invoices.flatMap(x => x.payments.map(p => ({ ...p, amount: num(p.amount), inv: x })));
+  const total = pays.reduce((s, p) => s + p.amount, 0);
+  const now = new Date(), wk = iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6)), mk = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+  const week = pays.filter(p => (p.date || '') >= wk).reduce((s, p) => s + p.amount, 0);
+  const month = pays.filter(p => (p.date || '').startsWith(mk)).reduce((s, p) => s + p.amount, 0);
+  const open = S.invoices.filter(isOpenDebt), openSum = open.reduce((s, x) => s + x.remaining, 0);
+  const start = openSum + total, pct = start > 0 ? total / start : 0;
+  const settled = S.invoices.filter(x => x.status === 'paid' && x.payments.length).length;
+  const contacted = open.filter(x => x.follow !== 'none').length;
+  const promises = open.filter(x => x.follow === 'promise'), promSum = promises.reduce((s, x) => s + x.remaining, 0);
+  // last 6 months
+  const months = [...Array(6)].map((_, i) => { const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1); return { k: `${d.getFullYear()}-${pad(d.getMonth() + 1)}`, label: MONTHS[d.getMonth()], v: 0 }; });
+  pays.forEach(p => { const m = months.find(m => (p.date || '').startsWith(m.k)); if (m) m.v += p.amount; });
+  const maxM = Math.max(...months.map(m => m.v), 1);
+  // by follow status
+  const byFol = FOLLOW.map(f => ({ ...f, n: open.filter(x => x.follow === f.k).length })).filter(f => f.n);
+  // by responsible person
+  const owners = [...new Set(S.invoices.map(x => x.owner || 'بدون مسؤول'))].map(o => {
+    const inv = S.invoices.filter(x => (x.owner || 'بدون مسؤول') === o);
+    return { o, open: inv.filter(isOpenDebt).length, rem: inv.filter(isOpenDebt).reduce((s, x) => s + x.remaining, 0),
+      got: inv.reduce((s, x) => s + x.payments.reduce((t, p) => t + num(p.amount), 0), 0) };
+  }).filter(r => r.open || r.got).sort((a, b) => b.rem - a.rem);
+  const users = {}; pays.forEach(p => { const u = String(p.by || '').split('@')[0]; (users[u] ||= { n: 0, s: 0 }); users[u].n++; users[u].s += p.amount; });
+  const bk = S.backup?.lastExportAt;
+  $('#sumView').innerHTML = `
+    <div class="kpis" style="margin-bottom:14px">
+      <div class="card kpi"><div class="lbl">محصّل من الموقع</div><div class="val">${M(total)}<small>${CUR}</small></div><div class="sub">${start > 0 ? `<span class="num">${Math.round(pct * 100)}%</span> من الديون وقت البداية` : 'ما فيه دفعات للحين'}</div></div>
+      <div class="card kpi"><div class="lbl">هذا الشهر</div><div class="val">${M(month)}<small>${CUR}</small></div><div class="sub">آخر 7 أيام: ${M(week)}</div></div>
+      <div class="card kpi"><div class="lbl">فواتير تسددت بالكامل</div><div class="val num">${settled}</div><div class="sub">من خلال الموقع</div></div>
+      <div class="card kpi"><div class="lbl">وعود سداد قائمة</div><div class="val">${M(promSum)}<small>${CUR}</small></div><div class="sub"><span class="num">${promises.length}</span> فاتورة</div></div>
+    </div>
+    <div class="card sum-card"><h3>التقدم في التحصيل</h3>
+      <div class="bar big" aria-hidden="true"><i style="width:${Math.min(100, pct * 100)}%"></i></div>
+      <p class="muted" style="margin:6px 0 0">تحصّل ${M(total)} وباقي ${M(openSum)} ${CUR}</p></div>
+    <div class="card sum-card"><h3>المحصّل شهرياً</h3>
+      <div class="mbars">${months.map(m => `<div class="mrow"><span class="ml">${m.label}</span><span class="mt"><i style="width:${m.v / maxM * 100}%"></i></span><span class="mv">${m.v ? M(m.v) : '—'}</span></div>`).join('')}</div></div>
+    <div class="card sum-card"><h3>التواصل مع العملاء</h3>
+      <p class="muted" style="margin:0 0 8px">تم التعامل مع <b class="num">${contacted}</b> من <b class="num">${open.length}</b> فاتورة مفتوحة (<span class="num">${open.length ? Math.round(contacted / open.length * 100) : 0}%</span>)</p>
+      <div class="bar" aria-hidden="true"><i style="width:${open.length ? contacted / open.length * 100 : 0}%"></i></div>
+      <ul class="stats" style="margin-top:10px">${byFol.map(f => `<li><span>${f.label}</span><b class="num">${f.n}</b></li>`).join('')}</ul></div>
+    <div class="card sum-card"><h3>حسب المسؤول</h3><div class="prev-wrap"><table class="prev"><thead><tr><th>المسؤول</th><th>فواتير مفتوحة</th><th>المتبقي</th><th>المحصّل</th></tr></thead><tbody>
+      ${owners.map(r => `<tr><td>${esc(r.o)}</td><td class="num">${r.open}</td><td>${M(r.rem)}</td><td>${r.got ? M(r.got) : '—'}</td></tr>`).join('')}</tbody></table></div></div>
+    ${Object.keys(users).length ? `<div class="card sum-card"><h3>الدفعات المسجلة حسب المستخدم</h3><ul class="stats">${Object.entries(users).map(([u, v]) => `<li><span>${esc(u)}</span><span><b class="num">${v.n}</b> دفعة · ${M(v.s)}</span></li>`).join('')}</ul></div>` : ''}
+    <p class="muted">آخر نسخة احتياطية (تصدير Excel): ${bk ? `${fmtDateTime(new Date(bk))} — ${shortUser(S.backup.lastExportBy)}` : 'ما تم أخذ نسخة للحين'}</p>`;
+}
+
+/* =================== backup reminder =================== */
+function renderBackupBanner() {
+  const b = $('#backupBanner'); if (!b) return;
+  const at = S.backup?.lastExportAt, days = at ? Math.floor((Date.now() - at) / 86400000) : null;
+  const show = isAdmin() && S.loaded && S.invoices.length && (days === null || days >= 7);
+  b.hidden = !show; if (!show) return;
+  b.innerHTML = `<span>${days === null ? 'ما تم أخذ نسخة احتياطية للحين' : `آخر نسخة احتياطية قبل <b class="num">${days}</b> يوم`} — صدّر ملف Excel واحفظه عندك</span><button class="btn sm" id="bkNow">تصدير الحين</button>`;
+  $('#bkNow').onclick = e => busy(e.currentTarget, exportXlsx);
+}
+
+/* =================== contacts (people who may know the customer) =================== */
+function contactRow(c = {}) {
+  return `<div class="crow">
+    <div class="field"><label>الاسم</label><input class="c-name" type="text" value="${esc(c.name || '')}"></div>
+    <div class="field"><label>الجوال</label><input class="c-phone" type="text" inputmode="tel" dir="ltr" value="${esc(c.phone || '')}" placeholder="05xxxxxxxx"></div>
+    <div class="field full"><label>أسماء ثانية تنكتب في الملف (افصل بفاصلة)</label><input class="c-alias" type="text" value="${esc((c.aliases || []).join('، '))}" placeholder="مثلاً: ابومحمد"></div>
+    <div class="full"><button type="button" class="btn sm danger c-del">حذف</button></div></div>`;
+}
+function openContacts() {
+  S.openId = null;
+  dlg.innerHTML = `<div class="dlg"><div class="dlg-head"><div><h2>جهات التواصل</h2><div class="sub">الأشخاص اللي ممكن يعرفون أرقام العملاء والمسؤولين — تظهر لهم أزرار اتصال وواتساب داخل الفاتورة</div></div>
+    <button class="x" aria-label="إغلاق" onclick="this.closest('dialog').close()">×</button></div>
+    <div class="dlg-body"><div id="cRows" style="display:flex;flex-direction:column;gap:8px">${(S.contacts.length ? S.contacts : [{}]).map(contactRow).join('')}</div>
+      <div class="rowbtns"><button class="btn sm" id="cAdd">＋ إضافة شخص</button><button class="btn primary" id="cSave">حفظ</button></div></div></div>`;
+  dlg.showModal();
+  $('#cRows').addEventListener('click', e => { if (e.target.closest('.c-del')) e.target.closest('.crow').remove(); });
+  $('#cAdd').onclick = () => $('#cRows').insertAdjacentHTML('beforeend', contactRow());
+  $('#cSave').onclick = e => busy(e.currentTarget, async () => {
+    const list = [];
+    for (const r of $$('#cRows .crow')) {
+      const name = $('.c-name', r).value.trim(), raw = $('.c-phone', r).value.trim();
+      if (!name && !raw) continue;
+      if (!name) { toast('فيه رقم بدون اسم', true); return; }
+      const phone = raw ? normPhone(raw) : '';
+      if (raw && !phone) { toast(`رقم ${name} غير صحيح`, true); return; }
+      list.push({ name, phone, aliases: $('.c-alias', r).value.split(/[،,]/).map(a => a.trim()).filter(Boolean) });
+    }
+    await S.api.saveContacts(list); logIt('edit', null, `تعديل جهات التواصل (${list.length} شخص)`); dlg.close(); toast('تم حفظ جهات التواصل');
+  });
+}
+function parseContacts(aoa) {
+  for (let i = 0; i < Math.min(aoa.length, 10); i++) {
+    const h = (aoa[i] || []).map(normAr);
+    const ni = h.findIndex(x => x === 'الاسم'), pi = h.findIndex(x => /^(الجوال|رقمالجوال|الرقم)$/.test(x)), ai = h.findIndex(x => /^اسماء/.test(x));
+    if (ni < 0 || pi < 0) continue;
+    return aoa.slice(i + 1).map(r => ({ name: cellText(r[ni]), phone: normPhone(cellText(r[pi])) || '', aliases: ai >= 0 ? cellText(r[ai]).split(/[،,]/).map(a => a.trim()).filter(Boolean) : [] }))
+      .filter(c => c.name);
+  }
+  return null;
+}
+async function importContacts(list, fileName) {
+  const merged = [...S.contacts.map(c => ({ ...c }))];
+  list.forEach(c => { const i = merged.findIndex(m => normAr(m.name) === normAr(c.name)); if (i >= 0) merged[i] = { ...merged[i], ...c, aliases: [...new Set([...(merged[i].aliases || []), ...c.aliases])] }; else merged.push(c); });
+  if (!confirm(`إضافة/تحديث ${list.length} من جهات التواصل من ملف ${fileName}؟`)) return;
+  await S.api.saveContacts(merged); logIt('edit', null, `استيراد جهات التواصل من ${fileName}`); toast('تم حفظ جهات التواصل');
+}
+
+/* =================== Excel import =================== */
+const HEADERS = {
+  'اسمالعميل': 'name', 'العميل': 'name',
+  'رقمالعميل': 'customerNo', 'كودالعميل': 'customerNo',
+  'رقمالفاتوره': 'invoiceNo',
+  'تاريخالفاتوره': 'invoiceDate',
+  'تاريخالاستحقاق': 'dueDate',
+  'مبلغالفاتوره': 'amount', 'قيمهالفاتوره': 'amount', 'اجماليالفاتوره': 'amount',
+  'المبلغالمسدد': 'paid', 'المسدد': 'paid',
+  'المبلغالمتبقي': 'remaining', 'المتبقي': 'remaining',
+  'ملاحظات': 'notes', 'الملاحظات': 'notes',
+  'المسوول': 'owner', 'الموظفالمسوول': 'owner',
+};
+const docId = no => String(no).trim().replace(/[\/\\#?\[\]\s]+/g, '-').replace(/^\.+$/, '_') || uid();
+const cellText = v => (v == null ? '' : typeof v === 'number' ? (Number.isInteger(v) ? String(v) : String(v)) : toLatin(String(v))).trim();
+function cellDate(v, XLSX) {
+  if (v === '' || v == null) return { ok: true, v: '' };
+  if (typeof v === 'number') {
+    if (v > 20000 && v < 80000) { const p = XLSX.SSF.parse_date_code(v); if (p) return { ok: true, v: `${p.y}-${pad(p.m)}-${pad(p.d)}` }; }
+    return { ok: false, v: '' };
+  }
+  const s = toLatin(String(v)).trim(); let m, y, mo, d;
+  if ((m = /^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/.exec(s))) [y, mo, d] = [m[1], m[2], m[3]];
+  else if ((m = /^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/.exec(s))) [y, mo, d] = [m[3], m[2], m[1]];
+  else return { ok: false, v: '' };
+  y = +y; mo = +mo; d = +d;
+  if (y < 1990 || y > 2100 || mo < 1 || mo > 12 || d < 1 || d > 31) return { ok: false, v: '' };
+  return { ok: true, v: `${y}-${pad(mo)}-${pad(d)}` };
+}
+function parseSheet(aoa, XLSX) {
+  let best = { idx: -1, map: {}, n: 0 };
+  for (let i = 0; i < Math.min(aoa.length, 20); i++) {
+    const map = {}; let n = 0;
+    (aoa[i] || []).forEach((h, c) => { const k = HEADERS[normAr(h)]; if (k && !(k in map)) { map[k] = c; n++; } });
+    if (n > best.n) best = { idx: i, map, n };
+  }
+  const res = { docs: [], noNo: 0, dupes: 0, badDates: 0, noAmount: 0, headerRow: best.idx, found: Object.keys(best.map), missing: [] };
+  ['name', 'invoiceNo', 'amount'].forEach(k => { if (!(k in best.map)) res.missing.push(k); });
+  if (best.n < 3 || res.missing.length) return res;
+  const seen = new Set(); const M_ = best.map; const get = (r, k) => (k in M_ ? r[M_[k]] : '');
+  for (let i = best.idx + 1; i < aoa.length; i++) {
+    const r = aoa[i] || [];
+    if (!r.some(v => String(v ?? '').trim() !== '')) continue;
+    const invoiceNo = cellText(get(r, 'invoiceNo'));
+    if (!invoiceNo) { res.noNo++; continue; }
+    let id = docId(invoiceNo);
+    if (seen.has(id)) { res.dupes++; let k = 2; while (seen.has(id + '-' + k)) k++; id = id + '-' + k; }
+    seen.add(id);
+    const id1 = cellDate(get(r, 'invoiceDate'), XLSX), dd = cellDate(get(r, 'dueDate'), XLSX);
+    if (!id1.ok || !dd.ok) res.badDates++;
+    const amtRaw = get(r, 'amount'), hasAmt = String(amtRaw ?? '').trim() !== '';
+    let amount = hasAmt ? round2(num(amtRaw)) : null, paid = round2(num(get(r, 'paid')));
+    const remRaw = get(r, 'remaining'), hasRem = String(remRaw ?? '').trim() !== '', rem = round2(num(remRaw));
+    if (amount === null && hasRem) amount = round2(paid + rem);
+    if (amount === null) res.noAmount++;
+    if (!('paid' in M_) && hasRem && amount !== null) paid = round2(amount - rem);
+    res.docs.push({ row: i + 1, id, invoiceNo, name: cellText(get(r, 'name')), customerNo: cellText(get(r, 'customerNo')),
+      invoiceDate: id1.v, dueDate: dd.v, amount, paid: Math.max(0, paid),
+      notes: cellText(get(r, 'notes')), owner: cellText(get(r, 'owner')), payments: [] });
+  }
+  return res;
+}
+const FIELD_AR = { name: 'اسم العميل', invoiceNo: 'رقم الفاتورة', amount: 'مبلغ الفاتورة' };
+async function importFile(file) {
+  const XLSX = await loadXlsx();
+  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+  let res = null, sheet = '';
+  for (const n of wb.SheetNames) {
+    const c = parseContacts(XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: '' }));
+    if (c && c.length && wb.SheetNames.length === 1) { await importContacts(c, file.name); return; }
+  }
+  for (const n of wb.SheetNames) {
+    const r = parseSheet(XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: '' }), XLSX);
+    if (!res || r.docs.length > res.docs.length) { res = r; sheet = n; }
+  }
+  if (!res || !res.docs.length) {
+    const miss = res?.missing?.length ? 'ما لقيت أعمدة: ' + res.missing.map(k => FIELD_AR[k]).join('، ') : 'ما لقيت فواتير في الملف';
+    toast(miss + '. تأكد إن أول صف فيه أسماء الأعمدة.', true); return;
+  }
+  const existing = new Set(S.invoices.map(x => x.id));
+  const fresh = res.docs.filter(d => !existing.has(d.id)), already = res.docs.length - fresh.length;
+  const freshD = fresh.map(derive);
+  dlg.innerHTML = `<div class="dlg"><div class="dlg-head"><div><h2>استيراد من Excel</h2><div class="sub">${esc(file.name)} · ورقة «${esc(sheet)}»</div></div>
+    <button class="x" aria-label="إغلاق" onclick="this.closest('dialog').close()">×</button></div>
+    <div class="dlg-body">
+      <ul class="stats">
+        <li><span>فواتير جديدة بتنضاف</span><b class="num">${fresh.length}</b></li>
+        <li><span>موجودة مسبقاً بالموقع (ما بتتغير)</span><b class="num">${already}</b></li>
+        ${res.noNo ? `<li><span>صفوف بدون رقم فاتورة (تم تجاهلها)</span><b class="num">${res.noNo}</b></li>` : ''}
+        ${res.dupes ? `<li><span>أرقام فواتير مكررة في الملف (انضافت برقم مميز -2)</span><b class="num">${res.dupes}</b></li>` : ''}
+        ${res.noAmount ? `<li style="color:var(--warn)"><span>فواتير بدون مبلغ (تنضاف وتقدر تكمّل مبلغها بعدين)</span><b class="num">${res.noAmount}</b></li>` : ''}
+        ${res.badDates ? `<li style="color:var(--warn)"><span>صفوف فيها تاريخ ما انقرأ (مثلاً هجري أو نص)</span><b class="num">${res.badDates}</b></li>` : ''}
+        <li><span>إجمالي المتبقي للفواتير الجديدة</span><b>${M(freshD.reduce((s, x) => s + Math.max(0, x.remaining), 0))} ${CUR}</b></li>
+      </ul>
+      <p class="muted" style="margin:0">الأعمدة المحسوبة (المتبقي، حالة السداد، أيام التأخير، فئة التأخير) يحسبها الموقع تلقائياً ولا تُنسخ من الملف.</p>
+      ${fresh.length ? `<div class="prev-wrap"><table class="prev"><thead><tr><th>رقم الفاتورة</th><th>العميل</th><th>الاستحقاق</th><th>المبلغ</th><th>المسدد</th><th>المتبقي</th><th>الفئة</th><th>المسؤول</th></tr></thead><tbody>
+        ${freshD.slice(0, 8).map(x => `<tr><td class="num">${esc(x.invoiceNo)}</td><td>${esc(x.name)}</td><td>${fmtDate(x.dueDate)}</td><td>${M(x.amount)}</td><td>${M(x.paid)}</td><td>${M(x.remaining)}</td><td>${CAT[x.cat].label}</td><td>${esc(x.owner)}</td></tr>`).join('')}
+      </tbody></table></div>${fresh.length > 8 ? `<p class="muted" style="margin:0">+ <span class="num">${fresh.length - 8}</span> فاتورة ثانية</p>` : ''}` : ''}
+      ${fresh.length ? `<div class="grid2" style="padding:0"><div class="field full" style="margin-bottom:-4px"><label>صفوف «الملف القديم» في الإكسل (اختياري)</label></div>
+        <div class="field"><label for="i-oldFrom">من صف</label><input id="i-oldFrom" type="text" inputmode="numeric" dir="ltr"></div>
+        <div class="field"><label for="i-oldTo">إلى صف</label><input id="i-oldTo" type="text" inputmode="numeric" dir="ltr"></div></div>` : ''}
+      <div class="rowbtns"><button class="btn primary" id="i-go" ${fresh.length ? '' : 'disabled'}>إضافة ${fresh.length} فاتورة</button><button class="btn" onclick="this.closest('dialog').close()">إلغاء</button></div>
+    </div></div>`;
+  S.openId = null; dlg.showModal();
+  $('#i-go').onclick = e => busy(e.currentTarget, async () => {
+    const a = parseInt(toLatin($('#i-oldFrom').value)), b = parseInt(toLatin($('#i-oldTo').value));
+    if ((a || b) && !(a > 0 && b >= a)) { toast('اكتب صفوف الملف القديم صح (من صف … إلى صف …)', true); return; }
+    fresh.forEach(d => { d.oldFile = !!(a && d.row >= a && d.row <= b); d.follow = 'none'; });
+    await S.api.createMany(fresh);
+    const nOld = fresh.filter(d => d.oldFile).length;
+    logIt('import', null, `استيراد ${fresh.length} فاتورة من ملف ${file.name}${nOld ? ` (منها ${nOld} من الملف القديم)` : ''}`);
+    dlg.close(); toast(`تمت إضافة ${fresh.length} فاتورة`);
+  });
+}
+
+/* =================== Excel export =================== */
+async function exportXlsx() {
+  const XLSX = await loadXlsx();
+  const head = ['اسم العميل', 'رقم العميل', 'رقم الفاتورة', 'تاريخ الفاتورة', 'تاريخ الاستحقاق', 'مبلغ الفاتورة', 'المبلغ المسدد', 'المبلغ المتبقي', 'حالة السداد', 'أساس حساب التأخير', 'أيام التأخير', 'فئة التأخير', 'ملاحظات', 'المسؤول', 'النوع', 'جوال العميل', 'اسأل', 'تنبيهات', 'حالة المتابعة', 'موعد الوعد', 'من الملف القديم', 'لا تتواصل'];
+  const rows = S.invoices.slice().sort(SORTS.name).map(x => [x.name, x.customerNo, x.invoiceNo, x.invoiceDate, x.dueDate || '', x.amount ?? '', x.paid, x.amount === null ? '' : Math.max(0, x.remaining),
+    STATUS[x.status], x.basisLabel, x.days || '', CAT[x.cat].label, x.notes || '', x.owner || '', x.ins.kinds.map(k => k.label).join('، '), x.ins.phones.join(' / '), x.ins.ask ? x.ins.ask.name : '', x.ins.alerts.join(' • '), FOL[x.follow].label, x.promiseDate || '', x.oldFile ? 'نعم' : '', x.hold || '']);
+  const pays = [];
+  S.invoices.forEach(x => x.payments.forEach(p => pays.push([x.invoiceNo, x.name, p.date, num(p.amount), p.note || '', p.by || ''])));
+  pays.sort((a, b) => String(b[2]).localeCompare(String(a[2])));
+  const wb = XLSX.utils.book_new();
+  const ws1 = XLSX.utils.aoa_to_sheet([head, ...rows]); ws1['!cols'] = head.map((h, i) => ({ wch: [24, 12, 14, 13, 13, 13, 13, 13, 14, 16, 11, 14, 30, 16, 16, 24, 14, 40, 16, 12, 12, 30][i] }));
+  const ws2 = XLSX.utils.aoa_to_sheet([['رقم الفاتورة', 'اسم العميل', 'تاريخ السداد', 'المبلغ', 'ملاحظة', 'سُجّلت بواسطة'], ...pays]); ws2['!cols'] = [14, 24, 13, 12, 26, 26].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, ws1, 'الفواتير');
+  XLSX.utils.book_append_sheet(wb, ws2, 'الدفعات');
+  wb.Workbook = { Views: [{ RTL: true }] };
+  XLSX.writeFile(wb, `الفواتير-${todayISO()}.xlsx`);
+  S.api.saveBackup({ lastExportAt: Date.now(), lastExportBy: S.user.email }).catch(e => console.warn('backup meta', e));
+  logIt('export', null, `تصدير نسخة Excel (${S.invoices.length} فاتورة)`);
+}
+
+/* =================== boot =================== */
+function onSnapErr(e) { console.error(e); toast(errMsg(e), true); }
+(async function boot() {
+  try { S.api = DEMO ? demoApi() : await firebaseApi(); }
+  catch (e) { console.error(e); renderFatal('تعذر تحميل Firebase. تأكد من الإنترنت ومن إعدادات config.js.'); return; }
+  S.api.onAuth(async u => {
+    S.unsub.forEach(f => { try { f && f(); } catch {} }); S.unsub = [];
+    if (dlg.open) dlg.close();
+    Object.assign(S, { user: u, role: null, loaded: false, invoices: [], raw: [], contacts: [], log: [], view: 'list', prevSeen: null });
+    if (!u) { renderLogin(); return; }
+    renderLoading();
+    try { S.role = await S.api.getRole(u.email); } catch (e) { console.error(e); S.role = null; }
+    if (!S.role) { renderNoAccess(); return; }
+    renderShell(); update();
+    S.unsub.push(S.api.watchInvoices(list => {
+      S.raw = list; S.invoices = list.map(derive); S.loaded = true; update();
+      if (S.openId) { if (cur()) renderDetailLive(); else if (dlg.open) dlg.close(); }
+      else if (S.openCust && dlg.open) renderCustomerLive();
+    }, onSnapErr));
+    if (!getSeen()) setSeen(Date.now());   // first time on this device: start counting from now
+    let firstLog = true;
+    S.unsub.push(S.api.watchLog(list => {
+      const known = new Set(S.log.map(l => l.id));
+      const fresh = firstLog ? [] : list.filter(l => !known.has(l.id) && l.by !== S.user.email);
+      S.log = list; firstLog = false;
+      if (fresh.length) toast(fresh.length === 1 ? `تحديث جديد من ${String(fresh[0].by || '').split('@')[0]}: ${fresh[0].text}` : `${fresh.length} تحديثات جديدة`);
+      if (S.view === 'log') renderLog(); else renderUnread();
+    }, onSnapErr));
+    S.unsub.push(S.api.watchBackup(d => { S.backup = d || {}; renderBackupBanner(); if (S.view === 'sum') renderSummary(); }, onSnapErr));
+    S.unsub.push(S.api.watchContacts(list => {
+      S.contacts = list; S.invoices = S.raw.map(derive); update();
+      if (S.openId && cur()) renderDetailLive();
+    }, onSnapErr));
+  });
+})();
+</script>
+</body>
+</html>
