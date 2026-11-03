@@ -1017,11 +1017,11 @@ function invoiceForm(x = {}, isNew = false) {
   return `<div class="grid2" id="invForm">
     ${isNew ? `<div class="field"><label>رقم الفاتورة *</label><input id="f-invoiceNo" type="text" dir="ltr" value="${v('invoiceNo')}"></div>` : ''}
     <div class="field ${isNew ? '' : 'full'}"><label>اسم العميل *</label><input id="f-name" type="text" value="${v('name')}"></div>
-    <div class="field"><label>رقم العميل (الجوال) *</label><input id="f-customerNo" type="text" value="${v('customerNo')}" placeholder="05xxxxxxxx أو: عند يحيى"></div>
+    <div class="field"><label>جوال العميل *</label><input id="f-customerNo" type="text" inputmode="tel" value="${v('customerNo')}" placeholder="05xxxxxxxx"></div>
     <div class="field"><label>مبلغ الفاتورة *</label><input id="f-amount" type="text" inputmode="decimal" dir="ltr" value="${x.amount ?? ''}"></div>
     <div class="field"><label>تاريخ الفاتورة *</label><input id="f-invoiceDate" type="date" value="${v('invoiceDate')}"></div>
     <div class="field"><label>تاريخ الاستحقاق</label><input id="f-dueDate" type="date" value="${v('dueDate')}"></div>
-    <div class="field full"><label>المسؤول</label><input id="f-owner" type="text" value="${v('owner')}" list="ownersList"></div>
+    <div class="field full"><label>المسؤول *</label><input id="f-owner" type="text" value="${v('owner')}" list="ownersList"></div>
     <datalist id="ownersList">${[...new Set(S.invoices.map(i => i.owner).filter(Boolean))].map(o => `<option value="${esc(o)}">`).join('')}</datalist>
     ${!isNew && isAdmin() ? `<div class="field full"><label>تنبيه «لا تتواصل مع الزبون» (اتركه فاضي إذا ما فيه)</label><input id="f-hold" type="text" value="${v('hold')}" placeholder="مثلاً: موضوعها عند أسامة — لا تكلم الزبون"></div>
     <label class="full" style="display:flex;gap:8px;align-items:center"><input id="f-old" type="checkbox" ${x.oldFile ? 'checked' : ''}> من الملف القديم</label>` : ''}
@@ -1037,11 +1037,14 @@ function readInvoiceForm() {
   $$('#invForm [aria-invalid]').forEach(el => el.removeAttribute('aria-invalid'));
   if ($('#f-invoiceNo') && !f.invoiceNo) return bad('invoiceNo', 'اكتب رقم الفاتورة');
   if (!f.name) return bad('name', 'اكتب اسم العميل');
-  if (!f.customerNo) return bad('customerNo', 'اكتب رقم العميل — وإذا ما عندك رقمه اكتب: عند (اسم الموظف) أو لايوجد');
-  if (/\d{6,}/.test(toLatin(f.customerNo).replace(/[\s-]/g, '')) && !normPhone(f.customerNo)) return bad('customerNo', 'رقم الجوال غير صحيح — لازم يكون 10 أرقام ويبدأ بـ 05');
+  const isNew = !!$('#f-invoiceNo');
+  if (!f.customerNo) return bad('customerNo', 'اكتب جوال العميل');
+  // a new invoice needs a real mobile number; older imported invoices may still hold notes like «عند يحيى»
+  if ((isNew || /\d{6,}/.test(toLatin(f.customerNo).replace(/[\s-]/g, ''))) && !normPhone(f.customerNo)) return bad('customerNo', 'رقم الجوال غير صحيح — لازم يكون 10 أرقام ويبدأ بـ 05');
   if (normPhone(f.customerNo)) f.customerNo = normPhone(f.customerNo);
   if (!(f.amount > 0)) return bad('amount', 'اكتب مبلغ الفاتورة');
   if (!f.invoiceDate) return bad('invoiceDate', 'اختر تاريخ الفاتورة');
+  if (!f.owner) return bad('owner', 'اكتب المسؤول عن الفاتورة');
   if (f.dueDate && f.dueDate < f.invoiceDate) return bad('dueDate', 'تاريخ الاستحقاق قبل تاريخ الفاتورة');
   return f;
 }
