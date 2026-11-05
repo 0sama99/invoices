@@ -256,7 +256,11 @@ details.admin summary{cursor:pointer;padding:12px 0;font-weight:600}
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script type="module">
-import { firebaseConfig, APP_TITLE, ORG_NAME } from './config.js';
+import * as CFG from './config.js';
+const { firebaseConfig, APP_TITLE, ORG_NAME } = CFG;
+// shown in the customer WhatsApp message (set in config.js; if missing, the payment line is left out)
+const PAY_IBAN = String(CFG.PAY_IBAN || '').trim(), PAY_NAME = String(CFG.PAY_NAME || '').trim();
+const SHOP_NAME = 'الموسى لقطع غيار تويوتا';
 
 const DEMO = !firebaseConfig?.apiKey || /^PASTE/i.test(firebaseConfig.apiKey);
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
@@ -938,25 +942,58 @@ function callBtns(phone, msg = '') {
   const i = intlPhone(phone);
   return `<div class="contact"><a class="btn sm" href="tel:+${i}">📞 اتصال</a><a class="btn sm" href="https://wa.me/${i}${msg ? '?text=' + encodeURIComponent(msg) : ''}" target="_blank" rel="noopener">واتساب</a></div>`;
 }
-function contactSection(x) {
+/* ---------- ready WhatsApp messages ---------- */
+const riyal = n => `${money(n)} ريال`;
+const dmy = s => s ? s.split('-').reverse().join('/') : '';
+const invHead = x => `رقم ${x.invoiceNo}${x.invoiceDate ? ` بتاريخ ${dmy(x.invoiceDate)}` : ''}`;
+const owedLines = (x, withAmount) => {
+  if (x.amount === null) return ['• مبلغ الفاتورة: غير معروف'];
+  const l = [];
+  if (withAmount) l.push(`• مبلغ الفاتورة: ${riyal(x.amount)}`);
+  if (x.paid > 0) l.push(`• المسدد: ${riyal(x.paid)}`);
+  l.push(x.cat === 'refund' ? `• مبلغ مستحق للعميل: ${riyal(Math.max(0, x.remaining))}` : `• المتبقي: ${riyal(Math.max(0, x.remaining))}`);
+  return l;
+};
+const listLine = x => `• فاتورة ${invHead(x)}: ${x.amount === null ? 'المبلغ غير معروف' : `المتبقي ${riyal(Math.max(0, x.remaining))}${x.paid > 0 ? ` (المسدد ${riyal(x.paid)})` : ''}`}`;
+const totalLine = list => `الإجمالي المتبقي: ${riyal(list.reduce((s, x) => s + Math.max(0, x.remaining), 0))}`;
+// to the customer — only for invoices that are still owed to us
+function customerMsg(list, name = '') {
+  list = list.filter(x => x.remaining > 0 && x.cat !== 'refund' && !x.hold);
+  if (!list.length) return '';
+  const body = list.length === 1
+    ? [`نود تذكيركم بالفاتورة ${invHead(list[0])}:`, ...(name ? [`• اسم العميل: ${name}`] : []), ...owedLines(list[0], true)]
+    : ['نود تذكيركم بالفواتير المتبقية عليكم:', ...(name ? [`• اسم العميل: ${name}`] : []), ...list.map(listLine), '', totalLine(list)];
+  return ['السلام عليكم ورحمة الله وبركاته', `معك ${SHOP_NAME}`, '', ...body, '',
+    'نأمل منكم التكرم بالسداد، ولأي استفسار حنا بالخدمة.',
+    ...(PAY_IBAN ? [`للسداد: تحويل على الآيبان ${PAY_IBAN}${PAY_NAME ? ` باسم ${PAY_NAME}` : ''}، أو زيارة المحل.`] : []),
+    'شاكرين لكم تعاملكم معنا 🌹'].join('\n');
+}
+// to the person who knows about the invoice (the one to ask, or the person responsible)
+function askMsg(list, who) {
+  const name = who.name, phone = who.phone;
+  const q = !name && !phone ? 'تعرف مين العميل ورقم جواله، ووش وضع' : !phone ? 'تعرف رقم جوال العميل ووش وضع' : !name ? 'تعرف اسم العميل ووش وضع' : 'تعرف وش وضع';
+  const custLine = name ? [`• العميل: ${name}`] : phone ? [`• رقم العميل: ${phone}`] : [];
+  if (list.length === 1) return ['السلام عليكم', `بخصوص الفاتورة ${invHead(list[0])}`, ...custLine, ...owedLines(list[0], false), '', `الفاتورة مسجلة عندك، ${q} الفاتورة؟`].join('\n');
+  return ['السلام عليكم', 'بخصوص فواتير العميل:', ...custLine, ...list.map(listLine), '', totalLine(list), '', `الفواتير مسجلة عندك، ${q}ها؟`].join('\n');
+}
+function contactSection(x, list = [x], who = { name: x.ins.nameUnknown ? '' : String(x.name ?? '').trim(), phone: x.ins.phones[0] || '' }) {
   const I = x.ins, rows = [];
+  const cMsg = customerMsg(list, who.name), aMsg = askMsg(list, who);
   const cno = String(x.customerNo ?? '').trim();
   if (x.hold) {
     rows.push(`<div class="who-row"><span class="k">جوال العميل</span><span class="v">موقوف التواصل مع الزبون</span>${I.phones.length ? `<span class="muted num">${I.phones.join(' / ')}</span>` : ''}</div>`);
   } else if (I.phones.length) {
-    rows.push(`<div class="who-row"><span class="k">جوال العميل${I.phones.length > 1 ? ` (${I.phones.length} أرقام)` : ''}</span>${I.phones.map(p => `<span class="v num">${p}</span>${callBtns(p)}`).join('')}</div>`);
+    rows.push(`<div class="who-row"><span class="k">جوال العميل${I.phones.length > 1 ? ` (${I.phones.length} أرقام)` : ''}</span>${I.phones.map(p => `<span class="v num">${p}</span>${callBtns(p, cMsg)}`).join('')}</div>`);
   } else {
     rows.push(`<div class="who-row"><span class="k">جوال العميل</span><span class="v">الرقم غير موجود</span>${cno ? `<span class="muted">مكتوب في الملف: ${esc(cno)}</span>` : ''}</div>`);
   }
   const sameAsOwner = I.ask && x.owner && normAr(I.ask.name) === normAr(findContact(x.owner)?.name || x.owner);
   if (I.ask && !x.hold) {
-    const amt = x.amount !== null ? ` بمبلغ ${money(x.amount)} ريال` : '';
-    const msg = `السلام عليكم، الفاتورة رقم ${x.invoiceNo} بتاريخ ${x.invoiceDate || ''}${amt} مسجلة عندك. تعرف اسم العميل ورقم جواله؟`;
-    rows.push(`<div class="who-row"><span class="k">${sameAsOwner ? 'المسؤول — اسأله عن رقم العميل' : 'اسأل عن رقم العميل'}</span><span class="v">${esc(I.ask.name)}${I.ask.phone ? ` · <span class="num">${I.ask.phone}</span>` : ''}</span>${I.ask.phone ? callBtns(I.ask.phone, msg) : `<span class="muted">${isAdmin() ? 'رقمه مو مضاف — أضفه من «جهات التواصل»' : 'رقمه مو مضاف'}</span>`}</div>`);
+    rows.push(`<div class="who-row"><span class="k">${sameAsOwner ? 'المسؤول — اسأله عن رقم العميل' : 'اسأل عن رقم العميل'}</span><span class="v">${esc(I.ask.name)}${I.ask.phone ? ` · <span class="num">${I.ask.phone}</span>` : ''}</span>${I.ask.phone ? callBtns(I.ask.phone, aMsg) : `<span class="muted">${isAdmin() ? 'رقمه مو مضاف — أضفه من «جهات التواصل»' : 'رقمه مو مضاف'}</span>`}</div>`);
   }
   if (x.owner && !sameAsOwner) {
     const c = findContact(x.owner);
-    rows.push(`<div class="who-row"><span class="k">المسؤول</span><span class="v">${esc(x.owner)}${/المؤسس/.test(x.owner) ? ' <span class="muted">(تتحملها المؤسسة)</span>' : ''}${c?.phone ? ` · <span class="num">${c.phone}</span>` : ''}</span>${c?.phone ? callBtns(c.phone) : ''}</div>`);
+    rows.push(`<div class="who-row"><span class="k">المسؤول</span><span class="v">${esc(x.owner)}${/المؤسس/.test(x.owner) ? ' <span class="muted">(تتحملها المؤسسة)</span>' : ''}${c?.phone ? ` · <span class="num">${c.phone}</span>` : ''}</span>${c?.phone ? callBtns(c.phone, aMsg) : ''}</div>`);
   }
   return `<div class="sec"><h3>التواصل</h3><div>${rows.join('')}</div></div>`;
 }
@@ -1245,7 +1282,7 @@ function renderCustomerLive() {
       <div><small>المسدد</small><b>${M(g.paid)}</b></div>
       <div><small>المتبقي</small><b>${M(g.remaining)}</b></div>
     </div>
-    <div style="margin-top:14px">${contactSection({ ...first, ins: { ...first.ins, phones: g.phones } , hold: g.hold })}</div>`;
+    <div style="margin-top:14px">${contactSection({ ...first, ins: { ...first.ins, phones: g.phones } , hold: g.hold }, payable(g).length ? payable(g) : [first], { name: g.unnamed ? '' : g.name, phone: g.phones[0] || '' })}</div>`;
   $('#c-invs').innerHTML = g.list.slice().sort((a, b) => (a.invoiceDate || '').localeCompare(b.invoiceDate || '')).map(x => `
     <button class="pay" data-inv="${esc(x.id)}" style="text-align:start;cursor:pointer;background:var(--surface);width:100%">
       <div class="l"><div class="a">فاتورة <span class="num">${esc(x.invoiceNo)}</span> · ${fmtDate(x.invoiceDate)}</div>
