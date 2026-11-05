@@ -147,7 +147,7 @@ main{padding:16px 0 60px}
 .mrow .mt{display:flex;height:10px;background:var(--surface-2);border-radius:99px;overflow:hidden}
 .mrow .mt i{display:block;background:var(--accent);border-radius:99px}
 .mrow .mv{min-width:70px;text-align:end}
-.badge.fol{--c:var(--c-notdue)} .badge.fol-promise{--c:var(--accent)} .badge.fol-noanswer,.badge.fol-refused{--c:var(--warn)} .badge.fol-hopeless{--c:var(--muted)} .badge.fol-asking{--c:var(--c-m1)} .badge.hold{--c:var(--danger)}
+.badge.fol{--c:var(--c-notdue)} .badge.fol-promise{--c:var(--accent)} .badge.fol-noanswer,.badge.fol-refused{--c:var(--warn)} .badge.fol-hopeless{--c:var(--muted)} .badge.fol-asking{--c:var(--c-m1)} .badge.multi{--c:var(--accent)} .badge.hold{--c:var(--danger)}
 .note-box.hold{background:color-mix(in srgb,var(--danger) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--danger) 40%,var(--line));font-weight:600}
 .note-box.hold::before,.note-box.hold div::before{content:none}
 .fuform{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end}
@@ -695,7 +695,7 @@ function renderShell() {
     <section id="custView" hidden>
       <div class="toolbar">
         <input class="q" id="cq" type="search" placeholder="بحث: اسم العميل، الجوال، المسؤول" aria-label="بحث في العملاء">
-        <select id="cSort" aria-label="ترتيب العملاء"><option value="rem">الأعلى متبقياً</option><option value="old">الأقدم تأخيراً</option><option value="n">الأكثر فواتير</option><option value="name">الاسم</option></select>
+        <select id="cSort" aria-label="ترتيب العملاء"><option value="rem">الأعلى متبقياً</option><option value="old">الأقدم تأخيراً</option><option value="n">الأكثر فواتير</option><option value="new">الأحدث تاريخاً</option><option value="name">الاسم</option></select>
         <select id="cShow" aria-label="عرض"><option value="open">عليهم مبالغ</option><option value="multi">عليهم أكثر من فاتورة</option><option value="all">كل العملاء</option></select>
       </div>
       <div class="count" id="ccount"></div>
@@ -809,7 +809,7 @@ function card(x) {
         <div style="min-width:0"><div class="name">${esc(x.displayName)}</div>
           <div class="meta"><span>فاتورة <span class="num">${esc(x.invoiceNo)}</span></span><span>${x.ins.phones[0] ? `جوال <span class="num">${x.ins.phones[0]}</span>` : 'الرقم غير موجود'}</span>${x.ins.ask ? `<span>اسأل: ${esc(x.ins.ask.name)}</span>` : ''}${x.owner ? `<span>المسؤول: ${esc(x.owner)}</span>` : ''}</div>
         </div>
-        <div class="badges"><span class="badge cat-${x.cat}">${CAT[x.cat].label}</span>${x.ins.kinds.map(k => `<span class="badge kind">${k.label}</span>`).join('')}${x.ins.review ? `<span class="badge warn" title="${esc(x.ins.alerts.join(' • '))}">⚠︎ مراجعة</span>` : ''}${x.hold ? `<span class="badge hold">⛔ لا تتواصل</span>` : ''}${x.follow !== 'none' ? `<span class="badge fol fol-${x.follow}">${FOL[x.follow].label}${x.follow === 'promise' && x.promiseDate ? ' ' + x.promiseDate.split('-').reverse().slice(0, 2).join('/') : ''}</span>` : ''}${x.oldFile ? `<span class="badge kind">الملف القديم</span>` : ''}</div>
+        <div class="badges"><span class="badge cat-${x.cat}">${CAT[x.cat].label}</span>${x.ins.kinds.map(k => `<span class="badge kind">${k.label}</span>`).join('')}${x.ins.review ? `<span class="badge warn" title="${esc(x.ins.alerts.join(' • '))}">⚠︎ مراجعة</span>` : ''}${x.hold ? `<span class="badge hold">⛔ لا تتواصل</span>` : ''}${x.follow !== 'none' ? `<span class="badge fol fol-${x.follow}">${FOL[x.follow].label}${x.follow === 'promise' && x.promiseDate ? ' ' + x.promiseDate.split('-').reverse().slice(0, 2).join('/') : ''}</span>` : ''}${x.oldFile ? `<span class="badge kind">الملف القديم</span>` : ''}${multiOpen(x) ? `<span class="badge multi">👥 عنده ${nInv(multiOpen(x).open.length)}</span>` : ''}</div>
       </div>
     </div>
     <div class="inv-nums">
@@ -940,7 +940,7 @@ function openDetail(id) {
 
 function callBtns(phone, msg = '') {
   const i = intlPhone(phone);
-  return `<div class="contact"><a class="btn sm" href="tel:+${i}">📞 اتصال</a><a class="btn sm" href="https://wa.me/${i}${msg ? '?text=' + encodeURIComponent(msg) : ''}" target="_blank" rel="noopener">واتساب</a></div>`;
+  return `<div class="contact"><a class="btn sm" href="tel:+${i}">📞 اتصال</a><a class="btn sm" href="https://api.whatsapp.com/send?phone=${i}${msg ? '&text=' + encodeURIComponent(msg) : ''}" target="_blank" rel="noopener">واتساب</a></div>`;
 }
 /* ---------- ready WhatsApp messages ---------- */
 const riyal = n => `${money(n)} ريال`;
@@ -1025,7 +1025,9 @@ function renderDetailLive() {
       <div><dt>مدة التأخير</dt><dd>${x.days ? `${x.age}<br><span class="muted"><span class="num">${x.days}</span> يوم</span>` : '—'}</dd></div>
       <div><dt>آخر تحديث</dt><dd>${upd ? `${fmtDateTime(upd)}<br><span class="muted">${shortUser(x.updatedBy)}</span>` : '—'}</dd></div>
     </dl>
+    ${multiOpen(x) ? `<div class="note-box info new-banner" style="margin-top:14px;flex-wrap:wrap"><span>👥 هذا العميل عليه <b>${nInv(multiOpen(x).open.length)}</b> مفتوحة بمتبقي ${M(multiOpen(x).remaining)} ${CUR} — راسله من صفحة العميل عشان تروح له رسالة وحدة فيها كل فواتيره</span><button class="btn sm" id="goCust" type="button">فتح صفحة العميل</button></div>` : ''}
     <div style="margin-top:14px">${contactSection(x)}</div>`;
+  $('#goCust')?.addEventListener('click', () => { const g = multiOpen(cur()); if (g) openCustomer(g.key); });
   renderFollowInfo(x);
   const pays = x.payments.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.at || 0) - (a.at || 0));
   const fromSite = pays.reduce((s, p) => s + num(p.amount), 0);
@@ -1205,6 +1207,7 @@ function customerGroups() {
       promiseDue: list.some(x => x.promiseDue), hold: list.find(x => x.hold)?.hold || '',
       follow: latestFollow ? latestFollow.follow : 'none', review: open.some(x => x.ins.review),
       first: list.map(x => (x.invoiceDate || '9999') + '|' + x.invoiceNo).sort()[0],
+      latest: list.map(x => x.invoiceDate || '').sort().pop() || '',
     };
   }).map((g, _, all) => g);
 }
@@ -1218,7 +1221,7 @@ function renderCustomers() {
   if (S.cf.show === 'open') gs = gs.filter(g => g.open.length);
   if (S.cf.show === 'multi') gs = gs.filter(g => g.open.length > 1);
   if (S.cf.q) { const q = normAr(S.cf.q); gs = gs.filter(g => normAr([g.name, ...g.otherNames, ...g.phones, ...g.owners, ...g.list.map(x => x.invoiceNo + ' ' + x.customerNo)].join(' ')).includes(q)); }
-  const sorts = { rem: (a, b) => b.remaining - a.remaining, old: (a, b) => (b.oldest?.days || 0) - (a.oldest?.days || 0), n: (a, b) => b.open.length - a.open.length || b.remaining - a.remaining, name: (a, b) => a.name.localeCompare(b.name, 'ar') };
+  const sorts = { rem: (a, b) => b.remaining - a.remaining, old: (a, b) => (b.oldest?.days || 0) - (a.oldest?.days || 0), n: (a, b) => b.open.length - a.open.length || b.remaining - a.remaining, new: (a, b) => b.latest.localeCompare(a.latest) || b.remaining - a.remaining, name: (a, b) => a.name.localeCompare(b.name, 'ar') };
   gs.sort(sorts[S.cf.sort] || sorts.rem);
   $('#ccount').innerHTML = `<span class="num">${gs.length}</span> عميل · المتبقي ${M(gs.reduce((s, g) => s + g.remaining, 0))} ${CUR}`;
   if (!gs.length) { $('#clist').innerHTML = `<div class="empty">ما فيه عملاء يطابقون البحث.</div>`; return; }
@@ -1233,6 +1236,15 @@ function renderCustomers() {
       <div><small>أقدم فاتورة</small><span>${g.oldest?.age || '—'}</span></div>
     </div></button>`).join('');
 }
+function custOf(id) {
+  if (S._ciFor !== S.invoices) {
+    S._ci = new Map(); numberUnnamed(customerGroups()).forEach(g => g.list.forEach(x => S._ci.set(x.id, g))); S._ciFor = S.invoices;
+  }
+  return S._ci.get(id);
+}
+// the customer owes on more than one invoice (and this one is one of them)
+const nInv = n => n === 2 ? 'فاتورتين' : n <= 10 ? `${n} فواتير` : `${n} فاتورة`;
+const multiOpen = x => { const g = custOf(x.id); return g && g.open.length > 1 && g.open.some(o => o.id === x.id) ? g : null; };
 function curCust() { return S.openCust ? numberUnnamed(customerGroups()).find(g => g.key === S.openCust) : null; }
 function openCustomer(key) {
   S.openCust = key; S.openId = null; const g = curCust(); if (!g) return;
