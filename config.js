@@ -19,3 +19,7 @@ export const firebaseConfig = {
 // 2) Titles shown at the top of the site (optional).
 export const APP_TITLE = "متابعة الفواتير";
 export const ORG_NAME = "الفواتير غير المسددة";
+
+// 3) Payment details shown in the WhatsApp message to the customer (optional — leave "" to hide the line).
+export const PAY_IBAN = "SA3380000234608010989091";
+export const PAY_NAME = "مؤسسة يحيى محمد يحى الموسى للتجارة";

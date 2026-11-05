@@ -147,7 +147,7 @@ main{padding:16px 0 60px}
 .mrow .mt{display:flex;height:10px;background:var(--surface-2);border-radius:99px;overflow:hidden}
 .mrow .mt i{display:block;background:var(--accent);border-radius:99px}
 .mrow .mv{min-width:70px;text-align:end}
-.badge.fol{--c:var(--c-notdue)} .badge.fol-promise{--c:var(--accent)} .badge.fol-noanswer,.badge.fol-refused{--c:var(--warn)} .badge.fol-hopeless{--c:var(--muted)} .badge.hold{--c:var(--danger)}
+.badge.fol{--c:var(--c-notdue)} .badge.fol-promise{--c:var(--accent)} .badge.fol-noanswer,.badge.fol-refused{--c:var(--warn)} .badge.fol-hopeless{--c:var(--muted)} .badge.fol-asking{--c:var(--c-m1)} .badge.hold{--c:var(--danger)}
 .note-box.hold{background:color-mix(in srgb,var(--danger) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--danger) 40%,var(--line));font-weight:600}
 .note-box.hold::before,.note-box.hold div::before{content:none}
 .fuform{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end}
@@ -322,10 +322,12 @@ function addMonths(d, n) { // Excel EDATE: same day n months later, clamped to m
   t.setDate(Math.min(d.getDate(), last)); return t;
 }
 const FOLLOW = [
-  { k: 'none', label: 'لم يتم التواصل' }, { k: 'contacted', label: 'تم التواصل' }, { k: 'promise', label: 'وعد بالسداد' },
+  { k: 'none', label: 'لم يتم التواصل' }, { k: 'asking', label: 'نتواصل مع اللي عنده خبر', unknownOnly: true }, { k: 'contacted', label: 'تم التواصل' }, { k: 'promise', label: 'وعد بالسداد' },
   { k: 'noanswer', label: 'لا يرد' }, { k: 'refused', label: 'رافض' }, { k: 'hopeless', label: 'ميؤوس منها' }, { k: 'check', label: 'تحتاج مراجعة' },
 ];
 const FOL = Object.fromEntries(FOLLOW.map(f => [f.k, f]));
+const unknownCust = x => !x.ins.phones.length || x.ins.nameUnknown;
+const followOpts = (cur, show) => FOLLOW.filter(f => !f.unknownOnly || show || cur === f.k).map(f => `<option value="${f.k}" ${cur === f.k ? 'selected' : ''}>${f.label}</option>`).join('');
 const SIZES = { big: [5000, Infinity], mid: [1000, 5000], small: [0, 1000] };
 function ageText(from, to = new Date()) {
   let m = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
@@ -885,7 +887,7 @@ function openDetail(id) {
       </form>` : ''}
       ${canPay() ? `<div class="sec"><h3>حالة المتابعة</h3>
         <div class="fuform">
-          <div class="field"><label for="fu-status">الحالة</label><select id="fu-status">${FOLLOW.map(f => `<option value="${f.k}" ${x.follow === f.k ? 'selected' : ''}>${f.label}</option>`).join('')}</select></div>
+          <div class="field"><label for="fu-status">الحالة</label><select id="fu-status">${followOpts(x.follow, unknownCust(x))}</select></div>
           <div class="field" id="fu-dwrap" ${x.follow === 'promise' ? '' : 'hidden'}><label for="fu-date">موعد السداد</label><input id="fu-date" type="date" value="${esc(x.promiseDate || '')}"></div>
           <div class="full"><button class="btn sm" id="fu-save">حفظ الحالة</button></div>
         </div>
@@ -1211,7 +1213,7 @@ function openCustomer(key) {
       </form>
       <div class="sec"><h3>حالة المتابعة لكل فواتيره المفتوحة</h3>
         <div class="fuform">
-          <div class="field"><label for="cfu-status">الحالة</label><select id="cfu-status">${FOLLOW.map(f => `<option value="${f.k}" ${g.follow === f.k ? 'selected' : ''}>${f.label}</option>`).join('')}</select></div>
+          <div class="field"><label for="cfu-status">الحالة</label><select id="cfu-status">${followOpts(g.follow, g.unnamed || !g.phones.length || g.open.some(unknownCust))}</select></div>
           <div class="field" id="cfu-dwrap" ${g.follow === 'promise' ? '' : 'hidden'}><label for="cfu-date">موعد السداد</label><input id="cfu-date" type="date"></div>
           <div class="full"><button class="btn sm" id="cfu-save">حفظ للكل</button></div>
         </div></div>` : ''}
