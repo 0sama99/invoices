@@ -153,6 +153,9 @@ main{padding:16px 0 60px}
 .fuform{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end}
 .fuform .full{grid-column:1/-1}
 .chip[aria-pressed="true"]{border-color:var(--c);background:color-mix(in srgb,var(--c) 14%,var(--surface))}
+.fol-link{all:unset;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;cursor:pointer;min-height:24px}
+.stats li:has(.fol-link):hover{background:var(--accent-soft)}
+.fol-link:focus-visible{outline:2px solid var(--accent);outline-offset:6px;border-radius:6px}
 .count{font-size:13px;color:var(--muted);margin:8px 2px}
 
 /* invoice list */
@@ -330,6 +333,8 @@ const FOLLOW = [
   { k: 'noanswer', label: 'لا يرد' }, { k: 'refused', label: 'رافض' }, { k: 'hopeless', label: 'ميؤوس منها' }, { k: 'check', label: 'تحتاج مراجعة' },
 ];
 const FOL = Object.fromEntries(FOLLOW.map(f => [f.k, f]));
+// remind when one of these statuses has not been updated for this many days
+const STALE_DAYS = { noanswer: 3, contacted: 7, asking: 7, check: 7 };
 const unknownCust = x => !x.ins.phones.length || x.ins.nameUnknown;
 const followOpts = (cur, show) => FOLLOW.filter(f => !f.unknownOnly || show || cur === f.k).map(f => `<option value="${f.k}" ${cur === f.k ? 'selected' : ''}>${f.label}</option>`).join('');
 const SIZES = { big: [5000, Infinity], mid: [1000, 5000], small: [0, 1000] };
@@ -435,8 +440,11 @@ function derive(inv) {
   }
   const follow = FOL[inv.follow] ? inv.follow : 'none';
   const promiseDue = follow === 'promise' && !!inv.promiseDate && inv.promiseDate <= todayISO() && remaining > 0;
+  const fAt = toDateLike(inv.followAt);
+  const staleDays = fAt ? Math.floor((Date.now() - fAt.getTime()) / 86400000) : 0;
+  const stale = !!STALE_DAYS[follow] && !!fAt && staleDays >= STALE_DAYS[follow] && known && remaining > 0 && !ins.refund && !inv.hold;
   const age = days && b.d ? ageText(b.d) : '';
-  return { ...inv, amount, paid, remaining, days, age, cat, status, basisLabel: b.label, payments: inv.payments || [], ins, displayName, follow, promiseDue };
+  return { ...inv, amount, paid, remaining, days, age, cat, status, basisLabel: b.label, payments: inv.payments || [], ins, displayName, follow, promiseDue, stale, staleDays };
 }
 
 /* =================== data layer: Firebase =================== */
@@ -669,10 +677,10 @@ function renderShell() {
         <input class="q" id="q" type="search" placeholder="بحث: اسم العميل، رقم الفاتورة، رقم العميل، المسؤول" aria-label="بحث">
         <select id="fStatus" aria-label="حالة السداد">
           <option value="open">غير مسدد بالكامل</option><option value="unpaid">غير مسدد</option>
-          <option value="partial">مسدد جزئياً</option><option value="review">يحتاج مراجعة</option><option value="noamount">بدون مبلغ</option><option value="refund">مبالغ للعملاء</option><option value="old">من الملف القديم</option><option value="hold">موقوف التواصل</option><option value="paid">مسدد بالكامل</option><option value="all">الكل</option>
+          <option value="partial">مسدد جزئياً</option><option value="review">يحتاج مراجعة</option><option value="noamount">بدون مبلغ</option><option value="refund">مبالغ للعملاء</option><option value="old">من الملف القديم</option><option value="hold">موقوف التواصل</option><option value="debt">عليها مبالغ لنا</option><option value="paid">مسدد بالكامل</option><option value="all">الكل</option>
         </select>
         <select id="fOwner" aria-label="المسؤول"></select>
-        <select id="fFollow" aria-label="حالة المتابعة"><option value="">كل حالات المتابعة</option>${FOLLOW.map(f => `<option value="${f.k}">${f.label}</option>`).join('')}<option value="due">وعود سداد حلّ موعدها</option></select>
+        <select id="fFollow" aria-label="حالة المتابعة"><option value="">كل حالات المتابعة</option>${FOLLOW.map(f => `<option value="${f.k}">${f.label}</option>`).join('')}<option value="due">وعود سداد حلّ موعدها</option><option value="stale">تحتاج متابعة (ما تحدّثت)</option></select>
         <select id="fSize" aria-label="حجم المبلغ"><option value="">كل المبالغ</option><option value="big">المتبقي 5,000 فأكثر</option><option value="mid">من 1,000 إلى 5,000</option><option value="small">أقل من 1,000</option></select>
         <select id="fSort" aria-label="الترتيب">
           <option value="days">الأكثر تأخيراً</option><option value="remaining">الأعلى متبقياً</option>
@@ -686,6 +694,7 @@ function renderShell() {
       </div>
       <div class="note-box info new-banner" id="newBanner" hidden></div>
       <div class="note-box alert new-banner" id="promiseBanner" hidden></div>
+      <div class="note-box alert new-banner" id="staleBanner" hidden></div>
       <div class="note-box alert new-banner" id="backupBanner" hidden></div>
       <div class="chips" id="chips"></div>
       <div class="count" id="count"></div>
@@ -743,8 +752,9 @@ function matches(x, skipCat = false) {
   if (f.status === 'review' && !x.ins.review) return false;
   if (f.status === 'old' && !x.oldFile) return false;
   if (f.status === 'hold' && !x.hold) return false;
-  if (!['open', 'all', 'review', 'old', 'hold'].includes(f.status) && x.status !== f.status) return false;
-  if (f.follow === 'due' ? !x.promiseDue : (f.follow && x.follow !== f.follow)) return false;
+  if (f.status === 'debt' && !isOpenDebt(x)) return false;
+  if (!['open', 'all', 'review', 'old', 'hold', 'debt'].includes(f.status) && x.status !== f.status) return false;
+  if (f.follow === 'due' ? !x.promiseDue : f.follow === 'stale' ? !x.stale : (f.follow && x.follow !== f.follow)) return false;
   if (f.size) { const [lo, hi] = SIZES[f.size]; if (!(x.remaining >= lo && x.remaining < hi) || x.amount === null) return false; }
   if (f.owner === '__none' ? !!x.owner : (f.owner && x.owner !== f.owner)) return false;
   if (!skipCat && f.cat && x.cat !== f.cat) return false;
@@ -786,6 +796,11 @@ function update() {
   const pb = $('#promiseBanner'); pb.hidden = !due.length || S.f.follow === 'due';
   if (due.length) pb.innerHTML = `<span>فيه <b class="num">${due.length}</b> ${due.length === 1 ? 'وعد سداد حلّ موعده' : 'وعود سداد حلّ موعدها'} — تابعها اليوم</span><button class="btn sm" id="seeDue">عرضها</button>`;
   $('#seeDue')?.addEventListener('click', () => { S.f.follow = 'due'; S.f.status = 'all'; $('#fFollow').value = 'due'; $('#fStatus').value = 'all'; update(); });
+  // statuses that have not been updated for a while
+  const stale = S.invoices.filter(x => x.stale);
+  const sb = $('#staleBanner'); sb.hidden = !stale.length || S.f.follow === 'stale';
+  if (stale.length) sb.innerHTML = `<span>⏰ فيه <b class="num">${stale.length}</b> ${stale.length === 1 ? 'فاتورة ما تحدّثت حالتها' : 'فواتير ما تحدّثت حالتها'} من مدة — شوف وش صار فيها</span><button class="btn sm" id="seeStale">عرضها</button>`;
+  $('#seeStale')?.addEventListener('click', () => { S.f.follow = 'stale'; S.f.status = 'all'; S.f.cat = ''; $('#fFollow').value = 'stale'; $('#fStatus').value = 'all'; update(); });
 
   // list
   const rows = base.filter(x => !S.f.cat || x.cat === S.f.cat).sort(SORTS[S.f.sort] || SORTS.days);
@@ -809,7 +824,7 @@ function card(x) {
         <div style="min-width:0"><div class="name">${esc(x.displayName)}</div>
           <div class="meta"><span>فاتورة <span class="num">${esc(x.invoiceNo)}</span></span><span>${x.ins.phones[0] ? `جوال <span class="num">${x.ins.phones[0]}</span>` : 'الرقم غير موجود'}</span>${x.ins.ask ? `<span>اسأل: ${esc(x.ins.ask.name)}</span>` : ''}${x.owner ? `<span>المسؤول: ${esc(x.owner)}</span>` : ''}</div>
         </div>
-        <div class="badges"><span class="badge cat-${x.cat}">${CAT[x.cat].label}</span>${x.ins.kinds.map(k => `<span class="badge kind">${k.label}</span>`).join('')}${x.ins.review ? `<span class="badge warn" title="${esc(x.ins.alerts.join(' • '))}">⚠︎ مراجعة</span>` : ''}${x.hold ? `<span class="badge hold">⛔ لا تتواصل</span>` : ''}${x.follow !== 'none' ? `<span class="badge fol fol-${x.follow}">${FOL[x.follow].label}${x.follow === 'promise' && x.promiseDate ? ' ' + x.promiseDate.split('-').reverse().slice(0, 2).join('/') : ''}</span>` : ''}${x.oldFile ? `<span class="badge kind">الملف القديم</span>` : ''}${multiOpen(x) ? `<span class="badge multi">👥 عنده ${nInv(multiOpen(x).open.length)}</span>` : ''}</div>
+        <div class="badges"><span class="badge cat-${x.cat}">${CAT[x.cat].label}</span>${x.ins.kinds.map(k => `<span class="badge kind">${k.label}</span>`).join('')}${x.ins.review ? `<span class="badge warn" title="${esc(x.ins.alerts.join(' • '))}">⚠︎ مراجعة</span>` : ''}${x.hold ? `<span class="badge hold">⛔ لا تتواصل</span>` : ''}${x.follow !== 'none' ? `<span class="badge fol fol-${x.follow}">${FOL[x.follow].label}${x.follow === 'promise' && x.promiseDate ? ' ' + x.promiseDate.split('-').reverse().slice(0, 2).join('/') : ''}</span>` : ''}${x.stale ? `<span class="badge warn">⏰ من ${x.staleDays} يوم</span>` : ''}${x.oldFile ? `<span class="badge kind">الملف القديم</span>` : ''}${multiOpen(x) ? `<span class="badge multi">👥 عنده ${nInv(multiOpen(x).open.length)}</span>` : ''}</div>
       </div>
     </div>
     <div class="inv-nums">
@@ -911,10 +926,10 @@ function openDetail(id) {
   $('#fu-save')?.addEventListener('click', e => busy(e.currentTarget, async () => {
     const c = cur(); const follow = $('#fu-status').value; const promiseDate = follow === 'promise' ? $('#fu-date').value : '';
     if (follow === 'promise' && !promiseDate) { toast('اختر موعد السداد اللي وعد فيه', true); return; }
-    if (follow === c.follow && promiseDate === (c.promiseDate || '')) { toast('ما فيه تغيير'); return; }
+    const again = follow === c.follow && promiseDate === (c.promiseDate || '');
     await S.api.update(c.id, { follow, promiseDate, followAt: Date.now(), followBy: S.user.email });
-    logIt('follow', c, `حالة المتابعة لفاتورة ${c.invoiceNo} (${c.displayName}): ${FOL[follow].label}${promiseDate ? ' — موعد السداد ' + promiseDate.split('-').reverse().join('/') : ''}`);
-    toast('تم حفظ حالة المتابعة');
+    logIt('follow', c, `حالة المتابعة لفاتورة ${c.invoiceNo} (${c.displayName}): ${FOL[follow].label}${again ? ' (متابعة مرة ثانية)' : ''}${promiseDate ? ' — موعد السداد ' + promiseDate.split('-').reverse().join('/') : ''}`);
+    toast(again ? 'تم تحديث تاريخ المتابعة' : 'تم حفظ حالة المتابعة');
   }));
   $('#p-full')?.addEventListener('click', () => { const c = cur(); if (c) $('#p-amt').value = c.remaining > 0 ? c.remaining : ''; });
   $('#payForm')?.addEventListener('submit', e => { e.preventDefault(); submitPayment(); });
@@ -1000,7 +1015,7 @@ function contactSection(x, list = [x], who = { name: x.ins.nameUnknown ? '' : St
 function renderFollowInfo(x) {
   const el = $('#fu-info'); if (!el) return;
   const at = toDateLike(x.followAt);
-  el.innerHTML = at ? `آخر تحديث للمتابعة: ${fmtDateTime(at)} — ${shortUser(x.followBy)}${x.promiseDue ? ' · <b style="color:var(--danger)">حلّ موعد الوعد</b>' : ''}` : 'ما تم تحديث حالة المتابعة للحين';
+  el.innerHTML = at ? `آخر تحديث للمتابعة: ${fmtDateTime(at)} — ${shortUser(x.followBy)}${x.promiseDue ? ' · <b style="color:var(--danger)">حلّ موعد الوعد</b>' : ''}${x.stale ? ` · <b style="color:var(--warn)">⏰ ما تحدّثت من ${x.staleDays} يوم — شوف وش صار</b>` : ''}` : 'ما تم تحديث حالة المتابعة للحين';
 }
 function renderDetailLive() {
   const x = cur(); if (!x || !$('#d-live')) return;
@@ -1204,7 +1219,7 @@ function customerGroups() {
       amount: round2(list.reduce((s, x) => s + (x.amount || 0), 0)),
       paid: round2(list.reduce((s, x) => s + x.paid, 0)),
       oldest, owners: [...new Set(list.map(x => x.owner).filter(Boolean))],
-      promiseDue: list.some(x => x.promiseDue), hold: list.find(x => x.hold)?.hold || '',
+      promiseDue: list.some(x => x.promiseDue), stale: list.some(x => x.stale), hold: list.find(x => x.hold)?.hold || '',
       follow: latestFollow ? latestFollow.follow : 'none', review: open.some(x => x.ins.review),
       first: list.map(x => (x.invoiceDate || '9999') + '|' + x.invoiceNo).sort()[0],
       latest: list.map(x => x.invoiceDate || '').sort().pop() || '',
@@ -1228,7 +1243,7 @@ function renderCustomers() {
   $('#clist').innerHTML = gs.slice(0, 300).map(g => `<button class="inv" data-key="${esc(g.key)}">
     <div><div class="inv-top"><div style="min-width:0"><div class="name">${esc(g.name)}</div>
       <div class="meta">${g.otherNames.length ? `<span>أو: ${esc(g.otherNames.join('، '))}</span>` : ''}<span>${g.phones[0] ? `جوال <span class="num">${g.phones[0]}</span>` : 'الرقم غير موجود'}</span>${g.owners.length ? `<span>المسؤول: ${esc(g.owners.join('، '))}</span>` : ''}</div></div>
-      <div class="badges">${g.oldest ? `<span class="badge cat-${g.oldest.cat}">${CAT[g.oldest.cat].label}</span>` : ''}${g.hold ? `<span class="badge hold">⛔ لا تتواصل</span>` : ''}${g.promiseDue ? `<span class="badge fol-promise fol">حلّ موعد الوعد</span>` : g.follow !== 'none' ? `<span class="badge fol fol-${g.follow}">${FOL[g.follow].label}</span>` : ''}${g.review ? `<span class="badge warn">⚠︎ مراجعة</span>` : ''}</div></div></div>
+      <div class="badges">${g.oldest ? `<span class="badge cat-${g.oldest.cat}">${CAT[g.oldest.cat].label}</span>` : ''}${g.hold ? `<span class="badge hold">⛔ لا تتواصل</span>` : ''}${g.promiseDue ? `<span class="badge fol-promise fol">حلّ موعد الوعد</span>` : g.follow !== 'none' ? `<span class="badge fol fol-${g.follow}">${FOL[g.follow].label}</span>` : ''}${g.stale ? `<span class="badge warn">⏰ تحتاج متابعة</span>` : ''}${g.review ? `<span class="badge warn">⚠︎ مراجعة</span>` : ''}</div></div></div>
     <div class="inv-nums">
       <div><small>فواتير مفتوحة</small><span class="num">${g.open.length}</span></div>
       <div><small>المسدد</small><span>${M(g.paid)}</span></div>
@@ -1341,6 +1356,7 @@ function renderSummary() {
   const maxM = Math.max(...months.map(m => m.v), 1);
   // by follow status
   const byFol = FOLLOW.map(f => ({ ...f, n: open.filter(x => x.follow === f.k).length })).filter(f => f.n);
+  const staleN = open.filter(x => x.stale).length;
   // by responsible person
   const owners = [...new Set(S.invoices.map(x => x.owner || 'بدون مسؤول'))].map(o => {
     const inv = S.invoices.filter(x => (x.owner || 'بدون مسؤول') === o);
@@ -1364,11 +1380,18 @@ function renderSummary() {
     <div class="card sum-card"><h3>التواصل مع العملاء</h3>
       <p class="muted" style="margin:0 0 8px">تم التعامل مع <b class="num">${contacted}</b> من <b class="num">${open.length}</b> فاتورة مفتوحة (<span class="num">${open.length ? Math.round(contacted / open.length * 100) : 0}%</span>)</p>
       <div class="bar" aria-hidden="true"><i style="width:${open.length ? contacted / open.length * 100 : 0}%"></i></div>
-      <ul class="stats" style="margin-top:10px">${byFol.map(f => `<li><span>${f.label}</span><b class="num">${f.n}</b></li>`).join('')}</ul></div>
+      <ul class="stats" style="margin-top:10px">${byFol.map(f => `<li><button class="fol-link" data-fol="${f.k}"><span>${f.label}</span><span><b class="num">${f.n}</b> ‹</span></button></li>`).join('')}${staleN ? `<li><button class="fol-link" data-fol="stale"><span>⏰ تحتاج متابعة (ما تحدّثت)</span><span><b class="num">${staleN}</b> ‹</span></button></li>` : ''}</ul>
+      <p class="muted" style="margin:8px 0 0;font-size:12.5px">اضغط على أي حالة عشان تشوف فواتيرها</p></div>
     <div class="card sum-card"><h3>حسب المسؤول</h3><div class="prev-wrap"><table class="prev"><thead><tr><th>المسؤول</th><th>فواتير مفتوحة</th><th>المتبقي</th><th>المحصّل</th></tr></thead><tbody>
       ${owners.map(r => `<tr><td>${esc(r.o)}</td><td class="num">${r.open}</td><td>${M(r.rem)}</td><td>${r.got ? M(r.got) : '—'}</td></tr>`).join('')}</tbody></table></div></div>
     ${Object.keys(users).length ? `<div class="card sum-card"><h3>الدفعات المسجلة حسب المستخدم</h3><ul class="stats">${Object.entries(users).map(([u, v]) => `<li><span>${esc(u)}</span><span><b class="num">${v.n}</b> دفعة · ${M(v.s)}</span></li>`).join('')}</ul></div>` : ''}
     <p class="muted">آخر نسخة احتياطية (تصدير Excel): ${bk ? `${fmtDateTime(new Date(bk))} — ${shortUser(S.backup.lastExportBy)}` : 'ما تم أخذ نسخة للحين'}</p>`;
+  $$('#sumView .fol-link').forEach(b => b.onclick = () => {
+    // same invoices the summary counts: open amounts owed to us
+    Object.assign(S.f, { follow: b.dataset.fol, status: b.dataset.fol === 'stale' ? 'all' : 'debt', cat: '', owner: '', size: '', q: '' });
+    $('#fFollow').value = S.f.follow; $('#fStatus').value = S.f.status; $('#fOwner').value = ''; $('#fSize').value = ''; $('#q').value = '';
+    S.limit = 150; $('.tabs button[data-view="list"]').click(); window.scrollTo(0, 0);
+  });
 }
 
 /* =================== backup reminder =================== */
