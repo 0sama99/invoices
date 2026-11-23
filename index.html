@@ -655,7 +655,8 @@ function renderLogin() {
     const em = $('#em').value.trim(); if (!em) { $('#lerr').textContent = 'اكتب بريدك أولاً'; return; }
     try { await S.api.resetPassword(em); toast('إذا كان الحساب موجود، بيوصلك رابط تغيير كلمة المرور على البريد'); } catch (er) { $('#lerr').textContent = errMsg(er); }
   });
-  $('#em').focus();
+  // iPhone home-screen app: focusing the field on load leaves it stuck without a keyboard, so only auto-focus on computers
+  if (!matchMedia('(hover: none)').matches) $('#em').focus();
 }
 function renderLoading() { $('#app').innerHTML = `<div class="center"><div class="spin" aria-label="جاري التحميل"></div></div>`; }
 function renderNoAccess() {
