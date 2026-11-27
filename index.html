@@ -249,7 +249,9 @@ dialog::backdrop{background:rgba(10,10,10,.45)}
 .muted{color:var(--muted);font-size:14px}
 details.admin{border:1px solid var(--line);border-radius:12px;padding:0 12px}
 details.admin summary{cursor:pointer;padding:12px 0;font-weight:600}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-bottom:12px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-bottom:12px}
+.grid2 > *{min-width:0}
+@media (max-width:359px){.grid2{grid-template-columns:minmax(0,1fr)}} /* small phones: one field per row so dates are not cut */
 .grid2 .full{grid-column:1/-1}
 .rowbtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between}
 .prev{width:100%;border-collapse:collapse;font-size:13px}
@@ -264,6 +266,17 @@ details.admin summary{cursor:pointer;padding:12px 0;font-weight:600}
 #toast div.bad{background:#b21f15;color:#fff}
 .spin{width:28px;height:28px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:r 0.8s linear infinite}
 @keyframes r{to{transform:rotate(360deg)}}
+/* parts of an invoice (cards, one per part) */
+.parts{margin-top:14px;border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);border-radius:12px;padding:10px 12px}
+.parts h4{margin:0;font-size:15px}
+.parts-head{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.parts-head h4{margin-inline-end:auto}
+.pc{padding:10px 0;border-top:1px solid color-mix(in srgb,var(--muted) 25%,transparent)}
+.pc-name{font-weight:700;font-size:15px;overflow-wrap:anywhere}
+.pc-no{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;color:var(--muted);text-align:right;overflow-wrap:anywhere}
+.pc-row,.pc-sum{display:flex;justify-content:space-between;gap:10px;margin-top:4px;font-variant-numeric:tabular-nums}
+.pc-sum{border-top:1px solid color-mix(in srgb,var(--muted) 25%,transparent);padding-top:8px;margin-top:6px}
+.pc-sum.big{font-size:15.5px;font-weight:700}
 </style>
 </head>
 <body>
@@ -468,11 +481,16 @@ async function firebaseApi() {
   const app = appM.initializeApp(firebaseConfig);
   const auth = authM.getAuth(app);
   const db = fs.getFirestore(app);
+  // local testing only: config.js of a test copy can set EMULATOR = { host, port, email } — the live config never has it
+  const EMU = CFG.EMULATOR;
+  if (EMU) fs.connectFirestoreEmulator(db, EMU.host, EMU.port, { mockUserToken: { sub: EMU.email, email: EMU.email } });
   const ref = id => fs.doc(db, 'invoices', id);
-  const stamp = () => ({ updatedAt: fs.serverTimestamp(), updatedBy: auth.currentUser?.email || '' });
+  const pref = id => fs.doc(db, 'parts', id);
+  const stamp = () => ({ updatedAt: fs.serverTimestamp(), updatedBy: (EMU ? EMU.email : auth.currentUser?.email) || '' });
   const err = (code, msg) => Object.assign(new Error(msg || code), { code });
   return {
-    onAuth: cb => authM.onAuthStateChanged(auth, u => cb(u ? { email: u.email } : null)),
+    onAuth: EMU ? cb => { setTimeout(() => cb({ email: EMU.email }), 0); return () => {}; }
+      : cb => authM.onAuthStateChanged(auth, u => cb(u ? { email: u.email } : null)),
     signIn: (e, p) => authM.signInWithEmailAndPassword(auth, e.trim(), p),
     signOut: () => authM.signOut(auth),
     resetPassword: e => authM.sendPasswordResetEmail(auth, e.trim()),
@@ -497,11 +515,22 @@ async function firebaseApi() {
       return p.amount;
     }),
     update: (id, fields) => fs.updateDoc(ref(id), { ...fields, ...stamp() }),
-    remove: id => fs.deleteDoc(ref(id)),
+    async remove(id) {   // the invoice and its parts (if any) go together
+      const b = fs.writeBatch(db); b.delete(ref(id)); b.delete(pref(id)); await b.commit();
+    },
     async createMany(docs) {
       for (let i = 0; i < docs.length; i += 400) {
         const b = fs.writeBatch(db);
         docs.slice(i, i + 400).forEach(({ id, ...rest }) => b.set(ref(id), { ...rest, createdAt: fs.serverTimestamp(), ...stamp() }));
+        await b.commit();
+      }
+    },
+    // parts of an invoice: one doc per invoice in "parts" (same id as the invoice). Owner writes, owner + accountant read.
+    async getParts(id) { const s = await fs.getDoc(pref(id)); return s.exists() ? s.data() : null; },
+    async saveParts(docs) {
+      for (let i = 0; i < docs.length; i += 400) {
+        const b = fs.writeBatch(db);
+        docs.slice(i, i + 400).forEach(({ id, ...rest }) => b.set(pref(id), { ...rest, importedAt: fs.serverTimestamp(), importedBy: stamp().updatedBy }));
         await b.commit();
       }
     },
@@ -546,6 +575,7 @@ function demoApi() {
   Object.assign(invoices.find(x => x.invoiceNo === '29002'), { follow: 'promise', promiseDate: ago(1), followAt: Date.now() - 86400000 * 5, followBy: 'accountant@demo' });
   Object.assign(invoices.find(x => x.invoiceNo === '12001'), { follow: 'noanswer', followAt: Date.now() - 86400000 * 2, followBy: 'accountant@demo' });
   let log = [];
+  const parts = {};   // demo: parts imported in this session only (nothing saved)
   let contacts = [{ name: 'يحيى', phone: '0500000001', aliases: [] }, { name: 'صالح', phone: '0500000002', aliases: [] }, { name: 'نور الدين', phone: '0500000003', aliases: ['نور'] }, { name: 'فهد', phone: '0500000004', aliases: ['ابوغزل'] }];
   const conSubs = new Set(), bakSubs = new Set();
   const backup = { lastExportAt: Date.now() - 86400000 * 9, lastExportBy: 'owner@demo' };
@@ -577,8 +607,10 @@ function demoApi() {
     async removePayment(id, pid) { await wait(); const x = find(id); const p = (x.payments || []).find(q => q.id === pid); if (!p) return 0;
       x.payments = x.payments.filter(q => q.id !== pid); x.paid = round2(num(x.paid) - p.amount); x.updatedBy = user.email; x.updatedAt = Date.now(); emitInv(); return p.amount; },
     async update(id, f) { await wait(); Object.assign(find(id), f, { updatedBy: user.email, updatedAt: Date.now() }); emitInv(); },
-    async remove(id) { await wait(); invoices = invoices.filter(x => x.id !== id); emitInv(); },
+    async remove(id) { await wait(); invoices = invoices.filter(x => x.id !== id); delete parts[id]; emitInv(); },
     async createMany(docs) { await wait(); invoices.push(...docs.map(d => ({ ...d, updatedBy: user.email, updatedAt: Date.now() }))); emitInv(); },
+    async getParts(id) { await wait(); return parts[id] ? JSON.parse(JSON.stringify(parts[id])) : null; },
+    async saveParts(docs) { await wait(); docs.forEach(({ id, ...rest }) => { parts[id] = { ...rest, importedAt: Date.now(), importedBy: user.email }; }); },
     async addLog(e) { log.unshift({ id: uid(), ...e, at: new Date() }); emitLog(); },
     watchContacts(cb) { conSubs.add(cb); setTimeout(() => cb([...contacts]), 0); return () => conSubs.delete(cb); },
     async saveContacts(list) { await wait(); contacts = list; conSubs.forEach(f => f([...contacts])); },
@@ -592,6 +624,7 @@ const S = {
   api: null, user: null, role: null, invoices: [], log: [], loaded: false,
   view: 'list', f: { q: '', status: 'open', cat: '', owner: '', sort: 'days', follow: '', size: '' }, limit: 150,
   unsub: [], openId: null, openCust: null, raw: [], contacts: [], backup: {}, cf: { q: '', sort: 'rem', show: 'open' },
+  parts: {},   // parts cache: id -> doc | null (no parts) | 'loading' | 'error'
 };
 const isAdmin = () => S.role === 'admin';
 const canPay = () => S.role === 'admin' || S.role === 'editor';
@@ -702,6 +735,7 @@ function renderShell() {
         </select>
         <div class="actions">
           ${admin ? `<button class="btn" id="imp" type="button">⬆︎ استيراد Excel</button><input id="file" type="file" accept=".xlsx,.xls,.csv" hidden>` : ''}
+          ${admin ? `<button class="btn" id="impParts" type="button">⬆︎ استيراد القطع</button><input id="partsFile" type="file" accept=".json,application/json" hidden>` : ''}
           ${canPay() ? `<button class="btn" id="newInv" type="button">＋ فاتورة جديدة</button>` : ''}
           <button class="btn" id="exp" type="button">⬇︎ تصدير Excel</button>
         </div>
@@ -747,6 +781,8 @@ function renderShell() {
   if (admin) {
     $('#imp').onclick = () => $('#file').click();
     $('#file').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) busy($('#imp'), () => importFile(f)); };
+    $('#impParts').onclick = () => $('#partsFile').click();
+    $('#partsFile').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) busy($('#impParts'), () => importParts(f)); };
   }
   $('#newInv')?.addEventListener('click', openNewInvoice);
   $('#list').addEventListener('click', e => { const b = e.target.closest('.inv'); if (b) openDetail(b.dataset.id); });
@@ -905,6 +941,7 @@ dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
 
 function openDetail(id) {
   const fromCust = S.openCust; S.openId = id; const x = cur(); if (!x) return;
+  if (S.parts[id] === 'error') delete S.parts[id]; // parts failed to load last time: try again on reopen
   const admin = isAdmin();
   dlg.innerHTML = `<div class="dlg">
     <div class="dlg-head"><div style="min-width:0"><h2>${esc(x.displayName)}</h2><div class="sub">فاتورة <span class="num">${esc(x.invoiceNo)}</span>${x.displayName !== String(x.name ?? '').trim() && x.name ? ` · مكتوب في الملف: ${esc(x.name)}` : ''}</div></div>
@@ -1031,6 +1068,42 @@ function renderFollowInfo(x) {
   const at = toDateLike(x.followAt);
   el.innerHTML = at ? `آخر تحديث للمتابعة: ${fmtDateTime(at)} — ${shortUser(x.followBy)}${x.promiseDue ? ' · <b style="color:var(--danger)">حلّ موعد الوعد</b>' : ''}${x.stale ? ` · <b style="color:var(--warn)">⏰ ما تحدّثت من ${x.staleDays} يوم — شوف وش صار</b>` : ''}` : 'ما تم تحديث حالة المتابعة للحين';
 }
+/* ---------- parts of the invoice (imported from the shop system; read-only here) ---------- */
+function loadParts(id) {
+  if (S.parts[id] !== undefined) return;
+  S.parts[id] = 'loading';
+  S.api.getParts(id).then(p => { S.parts[id] = p || null; }, e => { console.error(e); S.parts[id] = 'error'; })
+    .finally(() => { if (S.openId === id && $('#d-parts')) $('#d-parts').innerHTML = partsSection(cur()); });
+}
+const TYPE_AR = { S: 'نقدية', R: 'آجلة' };
+function partsSection(x) {
+  if (!x) return '';
+  const P = S.parts[x.id];
+  if (P === undefined) { loadParts(x.id); return `<div class="parts"><h4>القطع</h4><p class="muted" style="margin:0">جاري التحميل…</p></div>`; }
+  if (P === 'loading') return `<div class="parts"><h4>القطع</h4><p class="muted" style="margin:0">جاري التحميل…</p></div>`;
+  if (P === 'error') return `<div class="parts"><h4>القطع</h4><p class="muted" style="margin:0">تعذر تحميل القطع. سكّر الفاتورة وافتحها مرة ثانية.</p></div>`;
+  if (!P || !Array.isArray(P.lines)) return `<div class="parts"><h4>القطع</h4><p class="muted" style="margin:0">ما فيه قطع مسجلة لهذي الفاتورة.</p></div>`;
+  const anyDisc = P.lines.some(l => Math.abs(num(l.price) - num(l.netp)) > 0.004);
+  const cards = P.lines.map(l => {
+    const disc = Math.abs(num(l.price) - num(l.netp)) > 0.004;
+    return `<div class="pc">
+      <div class="pc-name">${l.name ? esc(l.name) : '<span class="muted">بدون اسم</span>'}</div>
+      <div class="pc-no" dir="ltr">${esc(l.item)}</div>
+      ${num(l.ret) > 0 ? `<div><span class="badge warn">مرتجع <span class="num">${num(l.ret)}</span> من <span class="num">${num(l.qty)}</span></span></div>` : ''}
+      <div class="pc-row"><span>الكمية <b class="num">${num(l.qty)}</b> × ${money(l.netp)}${disc ? ` <s class="muted">${money(l.price)}</s>` : ''}</span><b>${money(num(l.qty) * num(l.netp))}</b></div>
+    </div>`;
+  }).join('');
+  const sum = P.lines.reduce((s, l) => s + num(l.qty) * num(l.netp), 0);
+  return `<div class="parts">
+    <div class="parts-head"><h4>القطع <span class="muted">(<span class="num">${P.lines.length}</span>)</span></h4>
+      ${P.seller ? `<span class="badge kind">البائع: ${esc(P.seller)}</span>` : ''}${P.type ? `<span class="badge kind">${esc(TYPE_AR[P.type] || P.type)}</span>` : ''}</div>
+    ${cards}
+    <div class="pc-sum"><span>${P.vat === false ? 'المجموع' : 'المجموع قبل الضريبة'}</span><b>${money(sum)}</b></div>
+    <div class="pc-sum big"><span>${P.vat === false ? 'الإجمالي' : 'الإجمالي مع الضريبة (نظام المحل)'}</span><b>${money(P.shopTotal)}</b></div>
+    ${P.vat === false ? (anyDisc ? '<p class="muted" style="margin:6px 0 0;font-size:12px">الرقم المشطوب هو السعر قبل الخصم.</p>' : '') : `<p class="muted" style="margin:6px 0 0;font-size:12px">أسعار القطع قبل الضريبة.${anyDisc ? ' الرقم المشطوب هو السعر قبل الخصم.' : ''}</p>`}
+  </div>`;
+}
+
 function renderDetailLive() {
   const x = cur(); if (!x || !$('#d-live')) return;
   const pct = x.amount > 0 ? Math.min(100, Math.max(0, x.paid / x.amount * 100)) : 0;
@@ -1055,6 +1128,7 @@ function renderDetailLive() {
       <div><dt>آخر تحديث</dt><dd>${upd ? `${fmtDateTime(upd)}<br><span class="muted">${shortUser(x.updatedBy)}</span>` : '—'}</dd></div>
     </dl>
     ${multiOpen(x) ? `<div class="note-box info new-banner" style="margin-top:14px;flex-wrap:wrap"><span>👥 هذا العميل عليه <b>${nInv(multiOpen(x).open.length)}</b> مفتوحة بمتبقي ${M(multiOpen(x).remaining)} ${CUR} — راسله من صفحة العميل عشان تروح له رسالة وحدة فيها كل فواتيره</span><button class="btn sm" id="goCust" type="button">فتح صفحة العميل</button></div>` : ''}
+    <div id="d-parts">${partsSection(x)}</div>
     <div style="margin-top:14px">${contactSection(x)}</div>`;
   $('#goCust')?.addEventListener('click', () => { const g = multiOpen(cur()); if (g) openCustomer(g.key); });
   renderFollowInfo(x);
@@ -1580,6 +1654,53 @@ async function importFile(file) {
   });
 }
 
+/* =================== parts import (owner only) =================== */
+// File made on the owner's PC from the shop system (format almoussa-parts-v1). Each record is matched to a site invoice by
+// number + full date + amount (difference under 1 riyal). Anything else is listed and skipped — never guessed.
+async function importParts(file) {
+  if (!isAdmin()) return;
+  let data;
+  try { data = JSON.parse(await file.text()); } catch { toast('الملف مو ملف قطع صحيح', true); return; }
+  if (data?.format !== 'almoussa-parts-v1' || !Array.isArray(data.invoices)) { toast('الملف مو ملف قطع صحيح', true); return; }
+  const str = (v, n) => String(v ?? '').slice(0, n);
+  const ok = [], notFound = [], amountDiff = [], bad = [];
+  for (const r of data.invoices) {
+    const no = str(r.invoiceNo, 40).trim(), date = str(r.invoiceDate, 10);
+    if (!no || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Array.isArray(r.lines) || !r.lines.length || r.lines.length > 300) { bad.push(no || '؟'); continue; }
+    const hits = S.invoices.filter(x => String(x.invoiceNo).trim() === no && x.invoiceDate === date);
+    if (!hits.length) { notFound.push(`${no} (${date})`); continue; }
+    const same = hits.filter(x => x.amount !== null && Math.abs(num(x.amount) - num(r.shopTotal)) < 1);
+    if (same.length !== 1) { amountDiff.push(`${no} (${date})${hits.length > 1 ? ' — أكثر من نتيجة' : ''}`); continue; }
+    ok.push({
+      id: same[0].id, invoiceNo: no, invoiceDate: date, shopTotal: round2(num(r.shopTotal)), vat: r.vat !== false,
+      type: str(r.type, 2), seller: str(r.seller, 60), sellerCode: str(r.sellerCode, 10),
+      lines: r.lines.map(l => ({ item: str(l.item, 30), name: str(l.name, 80), qty: num(l.qty), ret: num(l.ret), price: num(l.price), netp: num(l.netp) })),
+    });
+  }
+  const list = (t, a) => a.length ? `<details style="margin-top:6px"><summary>${t} (<span class="num">${a.length}</span>)</summary><p class="muted num" style="margin:6px 0 0">${a.map(esc).join('، ')}</p></details>` : '';
+  dlg.innerHTML = `<div class="dlg"><div class="dlg-head"><div><h2>استيراد القطع</h2><div class="sub">${esc(file.name)}</div></div>
+    <button class="x" aria-label="إغلاق" onclick="this.closest('dialog').close()">×</button></div>
+    <div class="dlg-body">
+      <ul class="stats">
+        <li><span>فواتير تطابقت (رقم + تاريخ + مبلغ) وبتنحفظ قطعها</span><b class="num">${ok.length}</b></li>
+        <li><span>عدد القطع</span><b class="num">${ok.reduce((s, d) => s + d.lines.length, 0)}</b></li>
+        ${notFound.length ? `<li style="color:var(--warn)"><span>ما لقيت لها فاتورة بالموقع بنفس الرقم والتاريخ</span><b class="num">${notFound.length}</b></li>` : ''}
+        ${amountDiff.length ? `<li style="color:var(--warn)"><span>الرقم والتاريخ موجودين بس المبلغ يختلف (أو أكثر من نتيجة)</span><b class="num">${amountDiff.length}</b></li>` : ''}
+        ${bad.length ? `<li style="color:var(--warn)"><span>سجلات ناقصة في الملف</span><b class="num">${bad.length}</b></li>` : ''}
+      </ul>
+      ${list('ما لقيت لها فاتورة', notFound)}${list('المبلغ يختلف', amountDiff)}${list('سجلات ناقصة', bad)}
+      <p class="muted" style="margin:0">اللي ما تطابق ما ينحفظ. إذا الفاتورة لها قطع من قبل، تنستبدل بالجديدة. القطع يشوفها المالك والمحاسب، وما تنضاف لرسالة الواتساب.</p>
+      <div class="rowbtns"><button class="btn primary" id="pi-go" ${ok.length ? '' : 'disabled'}>حفظ قطع ${ok.length} فاتورة</button><button class="btn" onclick="this.closest('dialog').close()">إلغاء</button></div>
+    </div></div>`;
+  S.openId = null; dlg.showModal();
+  $('#pi-go').onclick = e => busy(e.currentTarget, async () => {
+    await S.api.saveParts(ok);
+    ok.forEach(d => { const { id, ...rest } = d; S.parts[id] = rest; });
+    logIt('import', null, `استيراد قطع ${ok.length} فاتورة من ملف ${file.name}`);
+    dlg.close(); toast(`تم حفظ قطع ${ok.length} فاتورة`);
+  });
+}
+
 /* =================== Excel export =================== */
 async function exportXlsx() {
   const XLSX = await loadXlsx();
@@ -1608,7 +1729,7 @@ function onSnapErr(e) { console.error(e); toast(errMsg(e), true); }
   S.api.onAuth(async u => {
     S.unsub.forEach(f => { try { f && f(); } catch {} }); S.unsub = [];
     if (dlg.open) dlg.close();
-    Object.assign(S, { user: u, role: null, loaded: false, invoices: [], raw: [], contacts: [], log: [], view: 'list', prevSeen: null });
+    Object.assign(S, { user: u, role: null, loaded: false, invoices: [], raw: [], contacts: [], log: [], view: 'list', prevSeen: null, parts: {} });
     if (!u) { renderLogin(); return; }
     renderLoading();
     try { S.role = await S.api.getRole(u.email); } catch (e) { console.error(e); S.role = null; }
